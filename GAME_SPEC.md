@@ -350,30 +350,26 @@ REINCARNATION_WEIGHTS = [
 > Format: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ### Phase 0 — Foundation
-- [ ] `core/constants.py`
-- [ ] `core/models.py`
-- [ ] `core/events.py`
-- [ ] `main.py` (stub)
-- [ ] `GAME_SPEC.md` (this file)
-- [ ] `CLAUDE.md`
+- [x] `core/constants.py`
+- [x] `core/models.py`
+- [x] `core/events.py`
+- [x] `main.py` (stub)
+- [x] `GAME_SPEC.md` (this file)
+- [x] `CLAUDE.md`
 
 ### Phase 1 — World & Movement
-- [ ] `world/zone.py`
-- [ ] `world/zones/bridge.py`
-- [ ] `world/zones/gardens.py`
-- [ ] `world/zones/village.py`
-- [ ] `world/zones/temple.py`
-- [ ] `world/npc_spawner.py`
-- [ ] `systems/movement.py`
-- [ ] `ui/zone_renderer.py`
-- [ ] `ui/sprites.py`
-- [ ] Wire player movement in `main.py`
+- [x] `world/__init__.py` (build_world — zones, NPC spawn, items)
+- [x] `systems/movement.py`
+- [x] `ui/zone_renderer.py`
+- [x] `ui/sprites.py`
+- [x] `ui/hud.py`
+- [x] Wire player movement in `main.py`
 
 ### Phase 2 — Core Systems (parallel)
-- [ ] `systems/combat.py` + `tests/test_combat.py`
-- [ ] `systems/social.py` + `tests/test_social.py`
-- [ ] `systems/reincarnation.py` + `tests/test_reincarnation.py`
-- [ ] `systems/economy.py`
+- [x] `systems/combat.py` + `tests/test_combat.py`
+- [x] `systems/social.py` + `tests/test_social.py`
+- [x] `systems/reincarnation.py` + `tests/test_reincarnation.py`
+- [x] `systems/economy.py` + `tests/test_economy.py`
 
 ### Phase 3 — Orders & Win/Loss
 - [ ] `systems/orders.py` + `tests/test_orders.py`
