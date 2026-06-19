@@ -382,7 +382,7 @@ REINCARNATION_WEIGHTS = [
 
 ### Phase 5 — Integration
 - [ ] Real sprite sheets
-- [ ] Real tile maps
+- [~] Real tile maps
 - [ ] End-to-end playthrough test
 
 ---

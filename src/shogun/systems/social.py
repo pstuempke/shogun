@@ -52,11 +52,15 @@ def _make_follower(state: GameState, npc: NPC, allegiance: str) -> None:
     if allegiance == "player" and npc.id not in state.player.follower_ids:
         state.player.follower_ids.append(npc.id)
     state.show_message(f"{npc.name} is now a follower!", 90)
+    zone_name = state.zones[npc.zone_id].name
+    state.log_event(f"{npc.name} joins your cause in {zone_name}.")
 
 
 def follower_befriend(state: GameState, follower: NPC, target: NPC) -> bool:
     """A follower attempts to befriend a target NPC. Returns True on success."""
     if not can_befriend(state, target):
         return False
+    zone_name = state.zones[target.zone_id].name
+    state.log_event(f"{follower.name} befriends {target.name} in {zone_name}.")
     _make_follower(state, target, "player")
     return True

@@ -18,6 +18,8 @@ def player_attack(state: GameState, npc: NPC) -> str:
         return f"{npc.name} follows you already."
     npc.combat_target = "player"
     state.player.combat_target = npc.id
+    zone_name = state.zones[npc.zone_id].name
+    state.log_event(f"You attack {npc.name} in {zone_name}.")
     return f"You attack {npc.name}!"
 
 
@@ -54,6 +56,7 @@ def _resolve_npc(state: GameState, npc: NPC) -> None:
             state.player.combat_target = None
         npc.bribed_until_tick = state.elapsed_ticks + YIELD_BEFRIEND_TICKS
         state.show_message(f"{npc.name} yields!", 90)
+        state.log_event(f"{npc.name} yields to you in {state.zones[npc.zone_id].name}.")
 
 
 def _kill_npc(state: GameState, npc: NPC) -> None:
@@ -68,6 +71,7 @@ def _kill_npc(state: GameState, npc: NPC) -> None:
     drop = random.randint(data["yen_min"], data["yen_max"])
     state.player.yen += drop
     state.show_message(f"{npc.name} falls! +{drop} yen", 120)
+    state.log_event(f"{npc.name} falls in {state.zones[npc.zone_id].name}. +{drop} yen.")
 
 
 def _npc_vs_npc(state: GameState, attacker: NPC) -> None:
@@ -84,6 +88,8 @@ def _npc_vs_npc(state: GameState, attacker: NPC) -> None:
             from shogun.systems.reincarnation import begin_death
             begin_death(state, target)
             attacker.combat_target = None
+            state.log_event(f"{attacker.name} defeats {target.name} in {state.zones[target.zone_id].name}.")
         elif target.energy <= YIELD_THRESHOLD:
             attacker.combat_target = None
             target.bribed_until_tick = state.elapsed_ticks + YIELD_BEFRIEND_TICKS
+            state.log_event(f"{attacker.name} forces {target.name} to yield.")

@@ -77,6 +77,7 @@ def main() -> None:
                         if item_name not in state.player.sacred_items:
                             state.player.sacred_items.append(item_name)
                         state.show_message(f"You pick up the {item_name.upper()}!", 150)
+                        state.log_event(f"You claim the {item_name.upper()} in {state.current_zone.name}.")
 
             check_win_loss(state)
             state.elapsed_ticks += 1

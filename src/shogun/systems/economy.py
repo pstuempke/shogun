@@ -19,4 +19,5 @@ def player_bribe(state: GameState, npc: NPC) -> str:
     state.player.yen -= cost
     npc.bribed_until_tick = state.elapsed_ticks + BRIBE_DURATION
     state.show_message(f"You bribe {npc.name} for {cost} yen.", 90)
+    state.log_event(f"You pay {cost} yen to bribe {npc.name}.")
     return f"{npc.name} is bribed for {BRIBE_DURATION} ticks."

@@ -30,6 +30,7 @@ def update_reincarnation(state: GameState) -> None:
 
 
 def _respawn(state: GameState, npc: NPC) -> None:
+    old_class_name = npc.npc_class.name
     classes, weights = zip(*REINCARNATION_WEIGHTS)
     new_class = random.choices(classes, weights=weights, k=1)[0]
     npc.apply_class(new_class)
@@ -39,7 +40,6 @@ def _respawn(state: GameState, npc: NPC) -> None:
     npc.combat_target = None
     npc.bribed_until_tick = -1
 
-    # respawn at a random passable position in their zone
     zone = state.zones.get(npc.zone_id)
     if zone:
         zone_w = len(zone.tile_map[0]) * 32
@@ -48,7 +48,16 @@ def _respawn(state: GameState, npc: NPC) -> None:
             float(random.randint(80, zone_w - 80)),
             float(random.randint(80, zone_h - 80)),
         )
+        zone_name = zone.name
+    else:
+        zone_name = npc.zone_id
+
     npc.yen = random.randint(
         NPC_CLASS_DATA[new_class]["yen_min"],
         NPC_CLASS_DATA[new_class]["yen_max"],
     )
+    new_class_name = new_class.name
+    if old_class_name != new_class_name:
+        state.log_event(f"{npc.name} is reborn as a {new_class_name} in {zone_name}.")
+    else:
+        state.log_event(f"{npc.name} is reborn in {zone_name}.")

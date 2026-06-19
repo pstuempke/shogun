@@ -103,10 +103,16 @@ class GameState:
     elapsed_ticks: int = 0
     message: str = ""
     message_until_tick: int = 0
+    event_log: list[str] = field(default_factory=list)  # newest first
 
     def show_message(self, text: str, duration: int = 90) -> None:
         self.message = text
         self.message_until_tick = self.elapsed_ticks + duration
+
+    def log_event(self, text: str, max_entries: int = 40) -> None:
+        self.event_log.insert(0, text)
+        if len(self.event_log) > max_entries:
+            self.event_log.pop()
 
     @property
     def current_zone(self) -> Zone:
