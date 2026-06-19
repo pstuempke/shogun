@@ -11,6 +11,7 @@ from shogun.systems.orders import update_orders
 from shogun.systems.win_condition import check_win_loss
 from shogun.ui.renderer import Renderer
 from shogun.ui.dialogue import ActionMenu, OrderScreen
+from shogun.ui.title import TitleScreen
 
 
 def main() -> None:
@@ -18,6 +19,10 @@ def main() -> None:
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
     pygame.display.set_caption("Shogun")
     clock = pygame.time.Clock()
+
+    if not TitleScreen(screen).run(clock, FPS):
+        pygame.quit()
+        sys.exit()
 
     state = new_game()
     renderer = Renderer(screen)

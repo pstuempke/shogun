@@ -379,10 +379,11 @@ REINCARNATION_WEIGHTS = [
 - [x] `ui/hud.py`
 - [x] `ui/dialogue.py` (ActionMenu + OrderScreen)
 - [x] `ui/renderer.py` (final wiring)
+- [x] Title screen
 
 ### Phase 5 — Integration
 - [ ] Real sprite sheets
-- [~] Real tile maps
+- [x] Real tile maps
 - [ ] End-to-end playthrough test
 
 ---
