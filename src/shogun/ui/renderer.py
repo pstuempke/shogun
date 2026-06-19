@@ -47,20 +47,4 @@ class Renderer:
         if order_screen and order_screen.active:
             order_screen.draw(self.screen, state, self.font_lg, self.font_sm)
 
-        # win/loss overlay
-        if state.game_phase == "won":
-            self._draw_overlay("YOU ARE SHOGUN!", (220, 180, 40))
-        elif state.game_phase == "lost":
-            self._draw_overlay("YOU HAVE FALLEN...", (200, 60, 60))
-
         pygame.display.flip()
-
-    def _draw_overlay(self, text: str, color: tuple[int, int, int]) -> None:
-        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
-        self.screen.blit(overlay, (0, 0))
-        font_big = pygame.font.SysFont("monospace", 48, bold=True)
-        surf = font_big.render(text, True, color)
-        self.screen.blit(surf, (SCREEN_W // 2 - surf.get_width() // 2, SCREEN_H // 2 - 30))
-        sub = self.font_lg.render("Press ESC to quit", True, (200, 200, 200))
-        self.screen.blit(sub, (SCREEN_W // 2 - sub.get_width() // 2, SCREEN_H // 2 + 30))
