@@ -37,6 +37,7 @@ RESPAWN_DELAY = 1800  # ticks (~60s at 30 FPS)
 
 # --- Economy ---
 BRIBE_DURATION = 600  # ticks
+ORDER_CONTACT_DISTANCE = CONTACT_DISTANCE
 
 # --- Win condition ---
 WIN_FOLLOWER_COUNT = 20

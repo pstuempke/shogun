@@ -372,13 +372,13 @@ REINCARNATION_WEIGHTS = [
 - [x] `systems/economy.py` + `tests/test_economy.py`
 
 ### Phase 3 — Orders & Win/Loss
-- [ ] `systems/orders.py` + `tests/test_orders.py`
-- [ ] `systems/win_condition.py` + `tests/test_win_condition.py`
+- [x] `systems/orders.py` + `tests/test_orders.py`
+- [x] `systems/win_condition.py` + `tests/test_win_condition.py`
 
 ### Phase 4 — UI Polish
-- [ ] `ui/hud.py`
-- [ ] `ui/dialogue.py`
-- [ ] `ui/renderer.py` (final wiring)
+- [x] `ui/hud.py`
+- [x] `ui/dialogue.py` (ActionMenu + OrderScreen)
+- [x] `ui/renderer.py` (final wiring)
 
 ### Phase 5 — Integration
 - [ ] Real sprite sheets
