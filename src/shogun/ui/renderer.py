@@ -1,78 +1,60 @@
+from __future__ import annotations
 import pygame
-from shogun.core.game import GameState
+from shogun.core.models import GameState
+from shogun.core.constants import SCREEN_W, SCREEN_H, HUD_H, TILE_SIZE, COLOR_BG
+from shogun.ui.sprites import Camera, draw_player, draw_npc
+from shogun.ui.zone_renderer import draw_zone
+from shogun.ui.hud import draw_hud
 
-SCREEN_W, SCREEN_H = 1024, 768
-FPS = 30
-
-COLORS = {
-    "bg": (20, 20, 40),
-    "text": (220, 220, 200),
-    "panel": (40, 40, 60),
-    "border": (120, 100, 60),
-    "players": [
-        (200, 60, 60),
-        (60, 120, 200),
-        (60, 180, 60),
-        (200, 160, 40),
-        (160, 60, 200),
-    ],
-    "neutral": (100, 100, 100),
-}
+PLAYFIELD_H = SCREEN_H - HUD_H
 
 
 class Renderer:
-    def __init__(self, screen: pygame.Surface):
+    def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
-        self.font_lg = pygame.font.SysFont("monospace", 22, bold=True)
-        self.font_sm = pygame.font.SysFont("monospace", 14)
+        self.font_lg = pygame.font.SysFont("monospace", 20, bold=True)
+        self.font_sm = pygame.font.SysFont("monospace", 13)
+        self.font_npc = pygame.font.SysFont("monospace", 11)
 
-    def draw(self, state: GameState):
-        self.screen.fill(COLORS["bg"])
-        self._draw_header(state)
-        self._draw_provinces(state)
-        self._draw_status(state)
+        # offscreen surface for the playfield (clips HUD)
+        self.playfield = pygame.Surface((SCREEN_W, PLAYFIELD_H))
+        self.camera = Camera(SCREEN_W, PLAYFIELD_H)
+
+    def draw(self, state: GameState) -> None:
+        zone = state.current_zone
+        world_w = len(zone.tile_map[0]) * TILE_SIZE
+        world_h = len(zone.tile_map) * TILE_SIZE
+
+        self.camera.update(*state.player.position, world_w, world_h)
+
+        self.playfield.fill(COLOR_BG)
+        draw_zone(self.playfield, state, self.camera)
+
+        # draw NPCs in current zone
+        for nid in zone.npc_ids:
+            npc = state.npcs.get(nid)
+            if npc:
+                draw_npc(self.playfield, npc, self.camera, self.font_npc)
+
+        draw_player(self.playfield, state.player, self.camera)
+
+        self.screen.blit(self.playfield, (0, 0))
+        draw_hud(self.screen, state, self.font_lg, self.font_sm)
+
+        # win/loss overlay
+        if state.game_phase == "won":
+            self._draw_overlay("YOU ARE SHOGUN!", (220, 180, 40))
+        elif state.game_phase == "lost":
+            self._draw_overlay("YOU HAVE FALLEN...", (200, 60, 60))
+
         pygame.display.flip()
 
-    def _draw_header(self, state: GameState):
-        title = self.font_lg.render(
-            f"SHOGUN  —  Year {state.year}  |  Turn {state.turn + 1}  |  {state.phase.upper()}",
-            True, COLORS["border"],
-        )
-        self.screen.blit(title, (20, 14))
-
-    def _draw_provinces(self, state: GameState):
-        cols = 5
-        cell_w, cell_h = 180, 60
-        start_x, start_y = 20, 60
-
-        for i, prov in enumerate(state.provinces):
-            col = i % cols
-            row = i // cols
-            x = start_x + col * (cell_w + 8)
-            y = start_y + row * (cell_h + 8)
-
-            color = COLORS["players"][prov.owner] if prov.owner is not None else COLORS["neutral"]
-            pygame.draw.rect(self.screen, COLORS["panel"], (x, y, cell_w, cell_h), border_radius=4)
-            pygame.draw.rect(self.screen, color, (x, y, cell_w, cell_h), width=2, border_radius=4)
-
-            name_surf = self.font_sm.render(prov.name, True, COLORS["text"])
-            armies_surf = self.font_sm.render(f"Armies: {prov.armies}", True, color)
-            self.screen.blit(name_surf, (x + 6, y + 8))
-            self.screen.blit(armies_surf, (x + 6, y + 30))
-
-    def _draw_status(self, state: GameState):
-        panel_y = SCREEN_H - 90
-        pygame.draw.rect(self.screen, COLORS["panel"], (0, panel_y, SCREEN_W, 90))
-        pygame.draw.line(self.screen, COLORS["border"], (0, panel_y), (SCREEN_W, panel_y), 2)
-
-        player = state.active_player
-        color = COLORS["players"][player.index]
-        label = "YOU" if player.is_human else "AI"
-        text = self.font_lg.render(
-            f"Active: {player.name} [{label}]  |  Koku: {player.koku}  |  Phase: {state.phase}",
-            True, color,
-        )
-        self.screen.blit(text, (20, panel_y + 16))
-
-        hint = self.font_sm.render("SPACE — next turn    ESC — quit", True, COLORS["text"])
-        self.screen.blit(hint, (20, panel_y + 56))
+    def _draw_overlay(self, text: str, color: tuple[int, int, int]) -> None:
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        self.screen.blit(overlay, (0, 0))
+        font_big = pygame.font.SysFont("monospace", 48, bold=True)
+        surf = font_big.render(text, True, color)
+        self.screen.blit(surf, (SCREEN_W // 2 - surf.get_width() // 2, SCREEN_H // 2 - 30))
+        sub = self.font_lg.render("Press ESC to quit", True, (200, 200, 200))
+        self.screen.blit(sub, (SCREEN_W // 2 - sub.get_width() // 2, SCREEN_H // 2 + 30))

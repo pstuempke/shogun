@@ -2,6 +2,8 @@ import sys
 import pygame
 from shogun.core.game import new_game
 from shogun.core.constants import SCREEN_W, SCREEN_H, FPS
+from shogun.systems.movement import move_player, update_npcs
+from shogun.ui.renderer import Renderer
 
 
 def main() -> None:
@@ -9,34 +11,26 @@ def main() -> None:
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
     pygame.display.set_caption("Shogun")
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont("monospace", 24, bold=True)
 
     state = new_game()
+    renderer = Renderer(screen)
 
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
 
-        screen.fill((20, 20, 40))
-        lines = [
-            f"SHOGUN  —  stub main (Phase 0)",
-            f"Zone: {state.current_zone.name}",
-            f"NPCs loaded: {len(state.npcs)}",
-            f"Items: {list(state.items.keys())}",
-            f"Player yen: {state.player.yen}",
-            "",
-            "Phase 1 (world + movement) not yet implemented.",
-            "ESC to quit.",
-        ]
-        for i, line in enumerate(lines):
-            surf = font.render(line, True, (220, 220, 200))
-            screen.blit(surf, (40, 40 + i * 36))
+        if state.game_phase == "playing":
+            keys = pygame.key.get_pressed()
+            move_player(state, keys)
+            update_npcs(state)
+            state.elapsed_ticks += 1
 
-        pygame.display.flip()
+        renderer.draw(state)
         clock.tick(FPS)
 
     pygame.quit()
