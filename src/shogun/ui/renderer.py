@@ -3,7 +3,7 @@ import pygame
 from shogun.core.models import GameState, NPC
 from shogun.core.constants import SCREEN_W, SCREEN_H, HUD_H, TILE_SIZE, COLOR_BG
 from shogun.ui.sprites import Camera, draw_player, draw_npc
-from shogun.ui.zone_renderer import draw_zone
+from shogun.ui.zone_renderer import draw_zone, draw_minimap
 from shogun.ui.hud import draw_hud
 
 PLAYFIELD_H = SCREEN_H - HUD_H
@@ -27,6 +27,7 @@ class Renderer:
 
         self.playfield.fill(COLOR_BG)
         draw_zone(self.playfield, state, self.camera)
+        draw_minimap(self.playfield, state, self.camera)
 
         for nid in zone.npc_ids:
             npc = state.npcs.get(nid)

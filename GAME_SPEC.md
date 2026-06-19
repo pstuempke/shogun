@@ -379,6 +379,8 @@ REINCARNATION_WEIGHTS = [
 - [x] `ui/hud.py`
 - [x] `ui/dialogue.py` (ActionMenu + OrderScreen)
 - [x] `ui/renderer.py` (final wiring)
+- [x] Energy regeneration
+- [x] Minimap
 - [x] Title screen
 
 ### Phase 5 — Integration

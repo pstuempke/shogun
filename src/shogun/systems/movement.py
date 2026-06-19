@@ -4,6 +4,7 @@ import pygame
 from shogun.core.models import GameState, Player, NPC, Zone
 from shogun.core.constants import (
     PLAYER_SPEED, TILE_SIZE, PASSABLE_TILES, SCREEN_W, SCREEN_H, HUD_H,
+    ENERGY_MAX, ENERGY_REGEN_RATE,
 )
 
 PLAYFIELD_H = SCREEN_H - HUD_H
@@ -51,6 +52,9 @@ def move_player(state: GameState, keys: pygame.key.ScancodeWrapper) -> None:
         y = new_y
 
     player.position = (x, y)
+
+    if player.combat_target is None and player.energy < ENERGY_MAX:
+        player.energy = min(ENERGY_MAX, player.energy + ENERGY_REGEN_RATE)
 
     # check portal overlap
     _check_portals(state)

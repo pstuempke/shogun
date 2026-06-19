@@ -39,6 +39,10 @@ RESPAWN_DELAY = 1800  # ticks (~60s at 30 FPS)
 BRIBE_DURATION = 600  # ticks
 ORDER_CONTACT_DISTANCE = CONTACT_DISTANCE
 
+# --- Energy regeneration ---
+ENERGY_MAX = 100.0
+ENERGY_REGEN_RATE = 0.05  # energy per tick while not in combat
+
 # --- Win condition ---
 WIN_FOLLOWER_COUNT = 20
 SACRED_ITEMS: frozenset[str] = frozenset({"mirror", "scroll", "buddha"})
