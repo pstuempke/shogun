@@ -90,7 +90,7 @@ def update_npcs(state: GameState) -> None:
             continue
         if npc.combat_target:
             _chase(state, npc)
-        else:
+        elif not npc.rival_candidate:
             _wander(state, npc)
 
 

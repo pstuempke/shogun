@@ -229,9 +229,15 @@ def _spawn_npcs(zones: dict, npcs: dict) -> None:
         NpcClass.SERVANT: ["Miko", "Suki", "Nao", "Kei"],
         NpcClass.GEISHA:  ["Yoko", "Haru", "Midori", "Ume"],
         NpcClass.SAMURAI: ["Hawk", "Blade", "Ren", "Kuro"],
-        NpcClass.LORD:    ["Daimyo", "Shogun-san", "Lord Oda", "Lord Mori"],
+        NpcClass.LORD:    ["Lord Ishido", "Lord Oda", "Lord Mori", "Lord Toranaga"],
     }
     counters: dict[NpcClass, int] = {}
+
+    # Specific NPCs that will be rivals or unreliable
+    # lord_0 = first lord (village) becomes rival Shogun candidate
+    # bandit_0, bandit_1 = unreliable (betray risk)
+    rival_ids = {"lord_0"}
+    unreliable_ids = {"bandit_0", "bandit_1"}
 
     for zone_id, config in spawn_config:
         zone = zones[zone_id]
@@ -256,6 +262,8 @@ def _spawn_npcs(zones: dict, npcs: dict) -> None:
                         NPC_CLASS_DATA[npc_class]["yen_min"],
                         NPC_CLASS_DATA[npc_class]["yen_max"],
                     ),
+                    rival_candidate=(npc_id in rival_ids),
+                    is_unreliable=(npc_id in unreliable_ids),
                 )
                 npcs[npc_id] = npc
                 zone.npc_ids.append(npc_id)

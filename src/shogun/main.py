@@ -8,17 +8,19 @@ from shogun.systems.social import player_befriend, nearest_npc
 from shogun.systems.economy import player_bribe
 from shogun.systems.reincarnation import update_reincarnation
 from shogun.systems.orders import update_orders
+from shogun.systems.npc_ai import update_rival_ai, update_betrayal
 from shogun.systems.win_condition import check_win_loss
 from shogun.ui.renderer import Renderer
 from shogun.ui.dialogue import ActionMenu, OrderScreen
 from shogun.ui.title import TitleScreen
+from shogun.ui.character_select import CharacterSelectScreen
 from shogun.ui.pause import PauseMenu
 from shogun.ui.end_screen import EndScreen
 
 
-def run_game(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
+def run_game(screen: pygame.Surface, clock: pygame.time.Clock, char_key: str) -> bool:
     """Run one full game session. Returns True to play again, False to quit."""
-    state = new_game()
+    state = new_game(char_key)
     renderer = Renderer(screen)
     action_menu = ActionMenu()
     order_screen = OrderScreen()
@@ -55,7 +57,7 @@ def run_game(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
                 if state.game_phase == "playing" and adjacent_npc:
                     npc = adjacent_npc
                     if event.key == pygame.K_h:
-                        if npc.is_follower:
+                        if npc.is_follower and npc.allegiance == "player":
                             order_screen.open(npc.id, state)
                         else:
                             msg = player_befriend(state, npc)
@@ -77,6 +79,8 @@ def run_game(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
             update_combat(state)
             update_reincarnation(state)
             update_orders(state)
+            update_rival_ai(state)
+            update_betrayal(state)
 
             # item pickup
             px, py = state.player.position
@@ -113,12 +117,16 @@ def main() -> None:
     pygame.display.set_caption("Shogun")
     clock = pygame.time.Clock()
 
-    if not TitleScreen(screen).run(clock, FPS):
-        pygame.quit()
-        sys.exit()
+    while True:
+        if not TitleScreen(screen).run(clock, FPS):
+            break
 
-    while run_game(screen, clock):
-        pass  # play again loop
+        char_key = CharacterSelectScreen(screen).run(clock)
+        if char_key is None:
+            break  # player hit ESC on character select → quit
+
+        if not run_game(screen, clock, char_key):
+            break
 
     pygame.quit()
     sys.exit()

@@ -55,6 +55,8 @@ class NPC:
     allegiance: str | None = None
     combat_target: str | None = None
     bribed_until_tick: int = -1
+    rival_candidate: bool = False  # this NPC actively tries to recruit their own follower chain
+    is_unreliable: bool = False    # higher betrayal chance
 
     def __post_init__(self) -> None:
         data = NPC_CLASS_DATA[self.npc_class]
@@ -87,6 +89,8 @@ class Player:
     sacred_items: list[str] = field(default_factory=list)
     current_zone_id: str = "bridge"
     combat_target: str | None = None
+    shogun_milestone_reached: bool = False  # True once player has had ≥20 followers
+    delivery_deadline_tick: int = -1        # tick at which scramble-delivery expires; -1 = not started
 
     @property
     def energy_pct(self) -> float:
@@ -104,6 +108,7 @@ class GameState:
     message: str = ""
     message_until_tick: int = 0
     event_log: list[str] = field(default_factory=list)  # newest first
+    delivery_phase: bool = False  # True after 20-follower milestone fires without items
 
     def show_message(self, text: str, duration: int = 90) -> None:
         self.message = text

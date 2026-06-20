@@ -46,6 +46,15 @@ ENERGY_REGEN_RATE = 0.05  # energy per tick while not in combat
 # --- Win condition ---
 WIN_FOLLOWER_COUNT = 20
 SACRED_ITEMS: frozenset[str] = frozenset({"mirror", "scroll", "buddha"})
+DELIVERY_TIME_LIMIT = 9000  # ticks after milestone to collect scattered items (~5 min at 30 FPS)
+
+# --- NPC rival AI ---
+RIVAL_BEFRIEND_INTERVAL = 120   # ticks between each rival recruit attempt
+RIVAL_WIN_COUNT = 8             # rival follower count that triggers a warning in the event log
+
+# --- Betrayal ---
+BETRAYAL_CHANCE_BANDIT = 0.0008      # per-tick probability for bandit followers
+BETRAYAL_CHANCE_UNRELIABLE = 0.0004  # per-tick probability for NPCs flagged unreliable
 
 # --- Tile IDs ---
 TILE_FLOOR = 0
@@ -83,6 +92,18 @@ COLOR_ENERGY_HIGH = (60, 200, 60)
 COLOR_ENERGY_LOW = (200, 60, 60)
 COLOR_ITEM_EMPTY = (80, 80, 80)
 COLOR_ITEM_HELD = (220, 180, 40)
+
+# --- Character select ---
+CHARACTER_STARTS: dict[str, dict] = {
+    "Ronin":   dict(yen=50,  energy=100.0, bonus_followers=0,
+                    desc="A masterless samurai. Balanced start with nothing but skill."),
+    "Samurai": dict(yen=80,  energy=100.0, bonus_followers=1,
+                    desc="A skilled warrior. Begins with one loyal follower."),
+    "Lord":    dict(yen=150, energy=120.0, bonus_followers=2,
+                    desc="A powerful noble. Two sworn followers and a full purse."),
+    "Geisha":  dict(yen=120, energy=85.0,  bonus_followers=0,
+                    desc="A celebrated entertainer. High yen makes bribery easy."),
+}
 
 NPC_CLASS_COLORS: dict[NpcClass, tuple[int, int, int]] = {
     NpcClass.BANDIT:  (160, 60, 60),

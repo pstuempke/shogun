@@ -57,9 +57,19 @@ def draw_hud(surface: pygame.Surface, state: GameState, font_lg: pygame.font.Fon
         surface.blit(label, (slot_x + 11, HUD_Y + 16))
         slot_x += 44
 
-    # Zone name (right-aligned)
-    zone_text = font_sm.render(f"[ {state.current_zone.name} ]", True, COLOR_BORDER)
-    surface.blit(zone_text, (SCREEN_W - zone_text.get_width() - 16, HUD_Y + 8))
+    # Delivery countdown (right side, replaces zone name area when active)
+    if state.delivery_phase and state.player.delivery_deadline_tick > 0:
+        ticks_left = max(0, state.player.delivery_deadline_tick - state.elapsed_ticks)
+        secs_left = ticks_left // 30
+        mins = secs_left // 60
+        secs = secs_left % 60
+        urgent = ticks_left < 900  # last 30 seconds
+        timer_col = (220, 60, 60) if urgent else (220, 180, 40)
+        timer_text = font_lg.render(f"DELIVER ITEMS: {mins}:{secs:02d}", True, timer_col)
+        surface.blit(timer_text, (SCREEN_W - timer_text.get_width() - 16, HUD_Y + 8))
+    else:
+        zone_text = font_sm.render(f"[ {state.current_zone.name} ]", True, COLOR_BORDER)
+        surface.blit(zone_text, (SCREEN_W - zone_text.get_width() - 16, HUD_Y + 8))
 
     # Controls hint (bottom row of HUD)
     hint = font_sm.render("H=Befriend  A=Attack  B=Bribe  ESC=Quit", True, (100, 100, 120))
