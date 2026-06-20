@@ -7,11 +7,33 @@
 
 ## 1. Overview & Win Condition
 
-The player controls a ronin in feudal Japan (1560s). The goal is to become Shogun by amassing **20 followers** while holding all three **sacred items** (Mirror, Scroll, Buddha).
+The player controls a character in feudal Japan (1560s). The goal is to become Shogun by amassing **20 followers** and recovering all three **sacred items** (Mirror, Scroll, Buddha).
 
-- **Win**: `len(player.follower_ids) >= 20` AND `len(player.sacred_items) == 3`
-- **Loss (death)**: player energy reaches 0
-- **Loss (time)**: if the player collects 20 followers but never held all 3 sacred items, Buddha kills them at the end (enforce: win check also requires sacred items)
+### Win sequence
+1. **Collect all three sacred items** before reaching 20 followers (optimal strategy).
+2. **Hit 20 followers while holding all three items** → instant win.
+3. **Hit 20 followers without all items** → items are **scattered** across the world, a **5-minute delivery timer** starts. Recover all three items before time expires to win.
+
+- **Win (immediate)**: first time `follower_ids ≥ 20` AND all 3 sacred items held.
+- **Win (delivery)**: `delivery_phase == True` AND all 3 sacred items re-collected.
+- **Loss (death)**: player energy reaches 0.
+- **Loss (time)**: delivery timer expires while `delivery_phase == True`.
+
+### Post-milestone rule
+Once `shogun_milestone_reached` is set (player first hit 20 followers), killing followers no longer reduces their count — the political milestone is locked in.
+
+### Starting character
+Before the game starts, the player selects a character class that affects starting yen, energy, and number of pre-recruited followers:
+
+| Class   | Yen | Energy | Bonus Followers |
+|---------|-----|--------|-----------------|
+| Ronin   | 50  | 100    | 0               |
+| Samurai | 80  | 100    | 1               |
+| Lord    | 150 | 120    | 2               |
+| Geisha  | 120 | 85     | 0               |
+
+### NPC Rivals
+One or more Lord-class NPCs are designated **rival Shogun candidates**. Every ~4 seconds they actively try to befriend unaligned NPCs in their zone, building their own follower chains. The game does not end if a rival accumulates followers — the player can still win. Rivals that reach 8+ followers log a warning event.
 
 The primary path to followers is the **social chain**: befriend an NPC → give them orders → they befriend others → those NPCs befriend more people → chain grows. Violence and bribery are secondary tools.
 
@@ -142,11 +164,16 @@ Zone dimensions: 40 tiles wide × 30 tiles tall. Tile size: 32px. Screen: 1280 �
 ### Befriend Action (player → NPC)
 1. Player presses **H** (Heart) while within 48px of NPC
 2. Check willingness:
-   - NPC `is_follower == False`
+   - NPC `is_follower == False` **OR** NPC is a rival follower (`allegiance ≠ "player"`)
    - NPC `is_dead == False`
    - NPC energy ≤ befriend threshold (Section 3) OR `bribed_until_tick > elapsed_ticks`
 3. On success: `npc.is_follower = True`, `npc.allegiance = "player"`, open Order Assignment UI
 4. On failure: display "Not yet willing" message for 90 ticks
+
+### Betrayal
+- **Bandits** and NPCs with `is_unreliable = True` have a per-tick chance of betraying the player.
+- On betrayal: follower leaves player's ranks and immediately attacks the player.
+- Chance per tick: BANDIT = 0.08%, UNRELIABLE = 0.04%.
 
 ### Order Assignment UI
 - Shows list of all living NPCs in current zone
@@ -387,6 +414,14 @@ REINCARNATION_WEIGHTS = [
 - [ ] Real sprite sheets
 - [x] Real tile maps
 - [~] End-to-end playthrough test
+
+### Phase 6 — Extended Mechanics (from original C64 game)
+- [x] Character select screen (Ronin / Samurai / Lord / Geisha starting classes)
+- [x] Win condition overhaul: 20-follower milestone → item scramble → delivery timer
+- [x] Post-milestone rule: follower count locked after first reaching 20
+- [x] NPC rival AI: `systems/npc_ai.py` — rivals recruit followers, log warnings at 8+
+- [x] Betrayal system: bandits and unreliable followers betray with per-tick probability
+- [x] Delivery countdown in HUD (urgent red when < 30s remain)
 
 ---
 

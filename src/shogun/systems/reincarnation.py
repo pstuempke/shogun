@@ -12,7 +12,10 @@ def begin_death(state: GameState, npc: NPC) -> None:
     npc.orders = []
     npc.combat_target = None
     if npc.id in state.player.follower_ids:
-        state.player.follower_ids.remove(npc.id)
+        # Post-milestone rule: once you've held 20 followers, killing anyone doesn't
+        # reduce your count — your status as Shogun-candidate is already locked in.
+        if not state.player.shogun_milestone_reached:
+            state.player.follower_ids.remove(npc.id)
     # drop held items
     for item in state.items.values():
         if item.holder_id == npc.id:
