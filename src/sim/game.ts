@@ -1,6 +1,11 @@
 import {
   FOLLOWERS_TO_WIN,
+  GAME_DAY_SECONDS,
   KOBAN_PICKUP_MAX,
+  NEWS_MEMORIES_SHOWN,
+  NEWS_MIN_DISPOSITION,
+  SAFETY_WITNESS_SPIKE,
+  TREASURE_WITNESSES,
   KOBAN_PICKUP_MIN,
   PALACE_ZX,
   PALACE_ZY,
@@ -16,19 +21,30 @@ import {
   ZONE_TILES,
 } from "../core/constants";
 import { Bus } from "../core/bus";
-import type {
-  FollowerOrder,
-  GamePhase,
-  Item,
-  Npc,
-  PlayerClass,
+import {
+  PLAYER_ID,
+  type FollowerOrder,
+  type GamePhase,
+  type Item,
+  type MemoryKind,
+  type Npc,
+  type PlayerClass,
 } from "../core/types";
-import { mulberry32, pick, randInt, shuffled, type Rng } from "../core/rng";
+import { mulberry32, randInt, shuffled, type Rng } from "../core/rng";
 import { World } from "./world";
 import { ROSTER } from "./roster";
 import { getClass } from "./classes";
-import { attemptBefriend, attemptBribe, befriendChance, bribeCost, giveGift } from "./social";
+import {
+  attemptBefriend,
+  attemptBribe,
+  befriendChance,
+  bribeCost,
+  giveGift,
+  seedAffinities,
+  type AffinityMap,
+} from "./social";
 import { npcShouldYield } from "./combat";
+import { narrateMemory, remember } from "./memory";
 import { finalScore, questComplete, readyForAudience, sacredItemDistricts, SACRED_NAMES } from "./quest";
 
 const GIFT_NAMES: [string, number][] = [
@@ -58,6 +74,8 @@ export class Game {
 
   npcs: Npc[] = [];
   items: Item[] = [];
+  affinities: AffinityMap = new Map();
+  knownTreasures = new Set<number>(); // sacredIndexes the player has heard about
   phase: GamePhase = "gathering";
   elapsed = 0;
 
@@ -122,8 +140,20 @@ export class Game {
         yielded: false,
         isRivalLeader: r.isRivalLeader,
         carrying: null,
+        plan: null,
+        memories: [],
+        traits: r.traits,
+        needs: {
+          rest: this.rng() * 30,
+          social: this.rng() * 40,
+          purpose: this.rng() * 50,
+          safety: 0,
+        },
+        behavior: null,
+        chatCooldown: 0,
       };
     });
+    this.affinities = seedAffinities(this.npcs, this.rng);
   }
 
   private spawnItems(): void {
@@ -153,7 +183,9 @@ export class Game {
     for (const [name, value] of WEAPON_NAMES) place("weapon", name, value);
   }
 
-  // The Emperor's quest: the four treasures appear only in phase 2.
+  // The Emperor's quest: the four treasures appear only in phase 2. Nobody
+  // tells the player where they are — but the NPCs nearest each treasure
+  // witness its arrival, and the news spreads by gossip. Ask around.
   private placeSacredItems(): void {
     const districts = sacredItemDistricts(this.rng);
     let id = this.items.reduce((m, i) => Math.max(m, i.id), 0) + 1;
@@ -171,10 +203,65 @@ export class Game {
         heldBy: "world",
         sacredIndex: idx,
       });
+      const nearest = [...this.npcs]
+        .filter((n) => n.alive)
+        .sort(
+          (a, b) =>
+            Math.abs(a.zx - z.zx) + Math.abs(a.zy - z.zy) - (Math.abs(b.zx - z.zx) + Math.abs(b.zy - z.zy)),
+        )
+        .slice(0, TREASURE_WITNESSES);
+      for (const npc of nearest) {
+        remember(npc, {
+          day: this.day,
+          kind: "treasure",
+          subjectId: npc.id,
+          objectId: idx,
+          zx: z.zx,
+          zy: z.zy,
+          secondhand: false,
+        });
+      }
     });
   }
 
+  // Every living NPC sharing the district witnesses the event first-hand.
+  // Violence rattles bystanders (their safety need spikes, see brain.ts).
+  witness(kind: MemoryKind, subjectId: number, objectId: number, zx: number, zy: number): void {
+    for (const npc of this.npcs) {
+      if (!npc.alive || npc.zx !== zx || npc.zy !== zy) continue;
+      remember(npc, { day: this.day, kind, subjectId, objectId, zx, zy, secondhand: false });
+      if ((kind === "fight" || kind === "death") && npc.id !== subjectId) {
+        npc.needs.safety = Math.min(100, npc.needs.safety + SAFETY_WITNESS_SPIKE);
+      }
+    }
+  }
+
+  askNews(npc: Npc): string {
+    if (npc.disposition <= NEWS_MIN_DISPOSITION && npc.allegiance !== "player") {
+      return `${npc.name} has nothing to say to you.`;
+    }
+    const fresh = [...npc.memories].sort((a, b) => b.day - a.day).slice(0, NEWS_MEMORIES_SHOWN);
+    if (fresh.length === 0) {
+      return `${npc.name}: "I have seen nothing of note lately."`;
+    }
+    let learned = false;
+    for (const m of fresh) {
+      if (m.kind === "treasure" && !this.knownTreasures.has(m.objectId)) {
+        this.knownTreasures.add(m.objectId);
+        learned = true;
+      }
+    }
+    const lines = fresh.map((m) => narrateMemory(m, this.npcs, this.world, this.day));
+    return (
+      `${npc.name}: "${lines.join(" ")}"` + (learned ? "\n(New treasure location marked on your map.)" : "")
+    );
+  }
+
   // ---- queries ----
+
+  get day(): number {
+    return Math.floor(this.elapsed / GAME_DAY_SECONDS) + 1;
+  }
 
   get followers(): Npc[] {
     return this.npcs.filter((n) => n.alive && n.allegiance === "player");
@@ -244,6 +331,7 @@ export class Game {
       this.ticker(`${npc.name} joins your cause!${wasRival ? " Ishido curses your name." : ""}`, "good");
       this.bus.emit("npcAllegiance", { id: npc.id });
       this.bus.emit("followerChange", { count: this.followerCount });
+      this.witness("recruit", PLAYER_ID, npc.id, this.zx, this.zy);
       this.checkGatheringProgress();
     } else {
       this.ticker(`${npc.name} refuses you. (${Math.round(res.chance)}% odds)`, "bad");
@@ -265,6 +353,7 @@ export class Game {
     this.bus.emit("npcAllegiance", { id: npc.id });
     this.bus.emit("followerChange", { count: this.followerCount });
     this.ticker(`${npc.name} accepts ${res.cost} koban and joins you.`, "good");
+    this.witness("recruit", PLAYER_ID, npc.id, this.zx, this.zy);
     this.checkGatheringProgress();
     return { ok: true, message: `${npc.name} pockets ${res.cost} koban.` };
   }
@@ -347,6 +436,7 @@ export class Game {
       }
       this.bus.emit("npcDied", { id: npc.id });
       this.ticker(`${npc.name} has been slain.`, "bad");
+      this.witness("death", PLAYER_ID, npc.id, npc.zx, npc.zy);
       this.checkPoolViability();
       return "dead";
     }
@@ -432,7 +522,7 @@ export class Game {
       this.placeSacredItems();
       this.bus.emit("phaseChange", { phase: this.phase });
       this.ticker("The Emperor speaks: recover the four Imperial Treasures and the Shogunate is yours!", "good");
-      return "The Emperor grants you audience. Four sacred treasures lie scattered across Japan — bring all four back at once.";
+      return "The Emperor grants you audience. Four sacred treasures lie hidden across Japan — bring all four back at once. Ask the people what they have seen; rumours travel.";
     }
     if (this.phase === "quest") {
       if (!questComplete(this.items)) {
@@ -453,11 +543,4 @@ export class Game {
     return "";
   }
 
-  sacredHint(): string | null {
-    const lost = this.items.filter((i) => i.sacredIndex >= 0 && i.heldBy === "world");
-    if (lost.length === 0) return null;
-    const item = pick(this.rng, lost);
-    const d = this.world.district(item.zx, item.zy);
-    return `Rumour: ${item.name} was seen near ${d.name}.`;
-  }
 }

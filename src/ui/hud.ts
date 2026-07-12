@@ -39,6 +39,10 @@ export class Hud {
     this.el("stat-class").textContent = `${label} ×${mult}`;
   }
 
+  setDay(day: number): void {
+    this.el("stat-day").textContent = `Day ${day}`;
+  }
+
   setHp(hp: number, maxHp: number): void {
     const frac = Math.max(0, hp / maxHp);
     this.el("hp-bar").style.width = `${frac * 100}%`;
@@ -136,7 +140,9 @@ export class Hud {
     if (game.phase === "quest") {
       ctx.fillStyle = "#ffe9a0";
       for (const i of game.items) {
-        if (i.sacredIndex >= 0 && i.heldBy === "world") {
+        // Treasures appear on the map only once the player has heard about
+        // them from an NPC — news is the way to find them.
+        if (i.sacredIndex >= 0 && i.heldBy === "world" && game.knownTreasures.has(i.sacredIndex)) {
           ctx.beginPath();
           ctx.arc((i.zx + 0.5) * cell, (i.zy + 0.5) * cell, 3.5, 0, Math.PI * 2);
           ctx.fill();

@@ -8,7 +8,44 @@ export interface CharacterView {
   body: THREE.Mesh;
   label: THREE.Sprite;
   labelCanvas: HTMLCanvasElement;
+  bubble: THREE.Sprite;
   bobPhase: number;
+}
+
+// Small speech bubble shown while an NPC is chatting.
+function makeBubbleSprite(): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 48;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "rgba(250, 248, 240, 0.95)";
+  ctx.strokeStyle = "rgba(40, 40, 55, 0.9)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(32, 20, 26, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(24, 34);
+  ctx.lineTo(18, 46);
+  ctx.lineTo(32, 35);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#33334a";
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(20 + i * 12, 20, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }),
+  );
+  sprite.scale.set(1.6, 1.2, 1);
+  sprite.position.set(0.8, 3.7, 0);
+  sprite.renderOrder = 11;
+  sprite.visible = false;
+  return sprite;
 }
 
 function makeLabelSprite(): { sprite: THREE.Sprite; canvas: HTMLCanvasElement } {
@@ -133,7 +170,9 @@ export function makeNpcView(npc: Npc): CharacterView {
   const { sprite, canvas } = makeLabelSprite();
   sprite.position.y = 2.9;
   group.add(sprite);
-  const view: CharacterView = { group, body, label: sprite, labelCanvas: canvas, bobPhase: Math.random() * 6 };
+  const bubble = makeBubbleSprite();
+  group.add(bubble);
+  const view: CharacterView = { group, body, label: sprite, labelCanvas: canvas, bubble, bobPhase: Math.random() * 6 };
   bindTexture(view);
   drawLabel(canvas, npc.name, allegianceColor(npc), npc.hp / npc.maxHp);
   return view;
@@ -144,7 +183,9 @@ export function makePlayerView(className: string): CharacterView {
   const { sprite, canvas } = makeLabelSprite();
   sprite.position.y = 2.9;
   group.add(sprite);
-  const view: CharacterView = { group, body, label: sprite, labelCanvas: canvas, bobPhase: 0 };
+  const bubble = makeBubbleSprite();
+  group.add(bubble);
+  const view: CharacterView = { group, body, label: sprite, labelCanvas: canvas, bubble, bobPhase: 0 };
   bindTexture(view);
   drawLabel(canvas, "You", "#9ecbff", null);
   return view;

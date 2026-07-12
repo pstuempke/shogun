@@ -1,25 +1,20 @@
 import {
+  GOSSIP_CHANCE,
   NPC_FIGHT_CHANCE,
   NPC_FLEE_HEALTH,
-  NPC_WANDER_CHANCE,
+  NPC_TRAVEL_SPEED,
   RIVAL_MAX_FOLLOWERS,
   RIVAL_RECRUIT_SECONDS,
-  RUMOR_SECONDS,
+  RIVAL_TICKER_MILESTONE,
   SIM_TICK_SECONDS,
-  WORLD_H,
-  WORLD_W,
 } from "../core/constants";
 import type { Npc } from "../core/types";
 import { pick } from "../core/rng";
+import { decide, driftNeeds, processBehavior } from "./brain";
 import { resolveOffscreenFight } from "./combat";
+import { gossip } from "./memory";
+import { advancePlan } from "./pathing";
 import type { Game } from "./game";
-
-const DIRS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
 
 // The living world: every heartbeat, off-screen NPCs wander between
 // districts, brawl, heal, and Lord Ishido gathers his own retinue. Every
@@ -27,13 +22,12 @@ const DIRS = [
 export class Simulation {
   private tickTimer = 0;
   private rivalTimer = 0;
-  private rumorTimer = 0;
+  private rivalRecruitCount = 0;
 
   update(game: Game, dt: number): void {
     if (game.phase === "won" || game.phase === "lost") return;
     this.tickTimer += dt;
     this.rivalTimer += dt;
-    this.rumorTimer += dt;
     while (this.tickTimer >= SIM_TICK_SECONDS) {
       this.tickTimer -= SIM_TICK_SECONDS;
       this.tick(game);
@@ -42,46 +36,60 @@ export class Simulation {
       this.rivalTimer = 0;
       this.rivalRecruit(game);
     }
-    if (game.phase === "quest" && this.rumorTimer >= RUMOR_SECONDS) {
-      this.rumorTimer = 0;
-      const hint = game.sacredHint();
-      if (hint) game.ticker(hint, "rumor");
-    }
   }
 
   tick(game: Game): void {
-    const rng = game.rng;
     for (const npc of game.npcs) {
       if (!npc.alive) continue;
-      const onScreen = npc.zx === game.zx && npc.zy === game.zy;
-      const travelling = npc.allegiance !== "player" || npc.order === "wait";
-      if (!onScreen && travelling && rng() < NPC_WANDER_CHANCE && npc.order !== "guard") {
-        this.wander(game, npc);
+      if (npc.chatCooldown > 0) npc.chatCooldown--;
+      // Visible NPCs (player's 3x3 neighborhood) are walked per-frame by the
+      // renderer loop; the sim only advances the ones nobody can see.
+      const visible = Math.abs(npc.zx - game.zx) <= 1 && Math.abs(npc.zy - game.zy) <= 1;
+      if (npc.plan) {
+        npc.plan.ticksLeft--;
+        if (npc.plan.ticksLeft <= 0) {
+          npc.plan = null; // stuck or stale — give up and re-decide later
+        } else if (!visible) {
+          advancePlan(npc, NPC_TRAVEL_SPEED * SIM_TICK_SECONDS);
+        }
+      }
+      // The utility brain drives everyone who isn't sworn to the player.
+      if (npc.allegiance !== "player" && !npc.yielded) {
+        driftNeeds(npc.needs, npc.traits);
+        if (npc.behavior) processBehavior(game, npc);
+        else if (!npc.plan) decide(game, npc);
       }
       // Wounded NPCs slowly recover between encounters.
-      if (npc.hp < npc.maxHp && !onScreen) {
+      if (npc.hp < npc.maxHp && !visible) {
         npc.hp = Math.min(npc.maxHp, npc.hp + 1);
         if (npc.yielded && npc.hp / npc.maxHp > NPC_FLEE_HEALTH) npc.yielded = false;
       }
     }
     this.maybeFight(game);
+    this.maybeGossip(game);
   }
 
-  private wander(game: Game, npc: Npc): void {
-    const options = DIRS.filter(
-      ([dx, dy]) =>
-        npc.zx + dx >= 0 && npc.zx + dx < WORLD_W && npc.zy + dy >= 0 && npc.zy + dy < WORLD_H,
-    );
-    const [dx, dy] = pick(game.rng, options);
-    npc.zx += dx;
-    npc.zy += dy;
-    const p = game.world.randomWalkableTile(npc.zx, npc.zy, game.rng);
-    npc.lx = p.lx;
-    npc.ly = p.ly;
-    if (npc.rank >= 4 || npc.isRivalLeader) {
-      const dir = dy < 0 ? "north" : dy > 0 ? "south" : dx > 0 ? "east" : "west";
-      game.ticker(`${npc.name} travels ${dir} to ${game.world.district(npc.zx, npc.zy).name}.`, "info");
+  // Until proper chats arrive (WP3), NPCs sharing a district swap news
+  // opportunistically — this is how treasure sightings travel the map.
+  private maybeGossip(game: Game): void {
+    if (game.rng() >= GOSSIP_CHANCE) return;
+    const byZone = new Map<string, Npc[]>();
+    for (const npc of game.npcs) {
+      if (!npc.alive) continue;
+      const key = `${npc.zx},${npc.zy}`;
+      const arr = byZone.get(key) ?? [];
+      arr.push(npc);
+      byZone.set(key, arr);
     }
+    const crowded = [...byZone.values()].filter((arr) => arr.length >= 2);
+    if (crowded.length === 0) return;
+    const zone = pick(game.rng, crowded);
+    const a = pick(game.rng, zone);
+    const b = pick(
+      game.rng,
+      zone.filter((n) => n !== a),
+    );
+    gossip(a, b);
   }
 
   private maybeFight(game: Game): void {
@@ -113,14 +121,20 @@ export class Simulation {
       zone.filter((n) => n !== aggressor && !(n.hostile || n.allegiance === "rival")),
     );
     const result = resolveOffscreenFight(aggressor, victim, game.rng);
+    // Bystanders remember what they saw; the player only hears about deaths.
+    game.witness(
+      result.loserDied ? "death" : "fight",
+      aggressor.id,
+      victim.id,
+      aggressor.zx,
+      aggressor.zy,
+    );
     if (result.loserDied) {
       game.ticker(`${result.winner.name} has slain ${result.loser.name}!`, "bad");
       game.bus.emit("npcDied", { id: result.loser.id });
       if (result.loser.allegiance === "player") {
         game.bus.emit("followerChange", { count: game.followerCount });
       }
-    } else {
-      game.ticker(`${aggressor.name} attacks ${victim.name} in ${game.world.district(aggressor.zx, aggressor.zy).name}.`, "info");
     }
   }
 
@@ -135,6 +149,13 @@ export class Simulation {
     const target = pick(game.rng, candidates);
     target.allegiance = "rival";
     game.bus.emit("npcAllegiance", { id: target.id });
-    game.ticker(`Lord Ishido has recruited ${target.name} to his banner.`, "bad");
+    game.witness("recruit", ishido.id, target.id, target.zx, target.zy);
+    this.rivalRecruitCount++;
+    if (this.rivalRecruitCount % RIVAL_TICKER_MILESTONE === 1) {
+      game.ticker(
+        `Word spreads: Lord Ishido's banner grows — ${game.rivalFollowerCount()} now follow him.`,
+        "bad",
+      );
+    }
   }
 }

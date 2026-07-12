@@ -43,14 +43,45 @@ its four notorious flaws:
 - **30 named NPCs** (from the novel + archetypes) spawn scattered across
   the map. Each has role, rank (0–5), HP, attack, and a disposition toward
   the player (−100…100).
-- A global heartbeat (every `SIM_TICK_SECONDS`) drives off-screen NPCs:
-  they wander between districts, slowly heal, and brawl (hostile/rival
-  NPCs attack civilians; losers are wounded or occasionally die).
+- **NPCs walk, never teleport.** An idle NPC periodically plans a trip to
+  a district within `WANDER_RADIUS` (never the palace): BFS over the
+  district graph produces gate-to-gate waypoints, walked at
+  `NPC_TRAVEL_SPEED`. Off-screen NPCs advance along the same waypoints
+  each sim tick; visible NPCs walk them per-frame with collision. Plans
+  time out after `PLAN_TIMEOUT_TICKS` if stuck.
+- **In-game clock**: `GAME_DAY_SECONDS` real seconds = 1 day, shown in
+  the HUD ("Day N").
+- A global heartbeat (every `SIM_TICK_SECONDS`) also heals wounded
+  off-screen NPCs and drives brawls (hostile/rival NPCs attack civilians;
+  losers are wounded or occasionally die). Routine travel is **not**
+  reported on the ticker.
 - **Lord Ishido** is the rival leader: every `RIVAL_RECRUIT_SECONDS` he
   recruits an unaffiliated NPC to his banner (cap: `RIVAL_MAX_FOLLOWERS`).
   Rival-aligned NPCs take a persuasion penalty to poach back.
-- Every noteworthy state change is pushed to the **ticker feed** (bottom
-  left): high-rank travel, attacks, deaths, recruitments, rumors.
+- **Utility brain**: every non-follower NPC has four needs (rest, social,
+  purpose, safety) that drift each tick, and personality traits (brave,
+  gregarious, greedy, pious — role defaults in `ROLE_TRAITS`, tuned per
+  character). Idle NPCs score candidate behaviors (`idle`, `work`, `rest`,
+  `socialize`, `flee`) and act: peasants tend paddies, merchants hold
+  market in villages, monks pray at the temple, nobles hold court, and
+  samurai/ronin/bandits patrol. Wounded NPCs favor rest (extra healing);
+  witnessed violence spikes `safety`, and the un-brave flee the district.
+- **Chats**: a socializing NPC walks to a partner with affinity ≥
+  `SOCIAL_MIN_AFFINITY`; within `CHAT_RANGE` both chat for `CHAT_TICKS`
+  (visible speech bubble), gaining affinity and exchanging gossip, then
+  cool down for `CHAT_COOLDOWN_TICKS`.
+- **Relationships**: every NPC pair has a symmetric affinity (−100…100),
+  seeded by role (bandits despised, monks liked, same-role kinship, plus
+  seeded noise) and shifted by chats and events.
+- **Memory**: each NPC keeps up to `MEMORY_CAPACITY` memories of events
+  witnessed in their district (fights, deaths, recruitments, treasure
+  sightings — treasure memories are never evicted first). NPCs sharing a
+  district **gossip** each tick with `GOSSIP_CHANCE`, passing fresh news
+  marked as secondhand.
+- **The ticker is curated**: player-facing events (recruits, deaths,
+  ransom), rival milestones (every `RIVAL_TICKER_MILESTONE`th Ishido
+  recruit), and quest beats. Routine travel and off-screen scuffles are
+  *not* reported — ask NPCs for news instead (`N`).
 
 ## 4. Player Classes (Difficulty Slider)
 
@@ -72,6 +103,10 @@ Context-sensitive action bar (replaces the original 9-icon bar). Actions
 appear when adjacent to an NPC / item / the Emperor, hotkeys always work:
 
 - **E — Examine**: identity, allegiance, live persuasion odds.
+- **N — Ask for news**: the NPC narrates their freshest memories
+  ("I saw…", "I heard that…", with relative days). Refused below
+  `NEWS_MIN_DISPOSITION`. Hearing a treasure memory marks that treasure
+  on the minimap.
 - **F — Befriend**: persuasion roll. Chance = base persuasion
   + followers × momentum + disposition bonus − rank-gap penalty
   (− rival penalty), clamped to 2–95 %. Failure lowers disposition.
@@ -118,10 +153,12 @@ Real-time in the world (no separate arena):
    Without 20 followers the guards turn you away.
 2. **The Shogun's Quest** — the Emperor scatters the four Imperial
    Treasures (Kusanagi sword, Yata mirror, Yasakani jewel, war fan) into
-   four distinct districts ≥ 4 Manhattan-steps from the palace. Rumor
-   ticker lines and minimap markers hint at locations. All four must be
-   carried **simultaneously** back to the Emperor.
-   During phase 2, Ishido's faction turns openly hostile.
+   four distinct districts ≥ 4 Manhattan-steps from the palace. The
+   `TREASURE_WITNESSES` NPCs nearest each treasure witness its arrival;
+   the news spreads by gossip, and the player finds treasures by asking
+   NPCs for news — a treasure appears on the minimap only once heard
+   about. All four must be carried **simultaneously** back to the
+   Emperor. During phase 2, Ishido's faction turns openly hostile.
 
 **Victory score** = (followers × 100 + gold + treasures × 250 + time
 bonus) × class multiplier.
@@ -147,6 +184,13 @@ bonus) × class multiplier.
 | Two-phase quest + scoring | [x] |
 | Isometric renderer, procedural assets, HUD, minimap | [x] |
 | Title / pause / end screens | [x] |
-| Unit tests (36) | [x] |
+| Walking NPC travel + in-game clock (WP1) | [x] |
+| Relationships, memory, gossip, ask-for-news (WP2) | [x] |
+| Utility brain: needs, traits, behaviors, chats (WP3) | [x] |
+| Unit tests (68) | [x] |
+
+Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
+behaviors, NPC↔NPC social life, memory/news, follower combat, recovery
+& trade) is specified in `ROADMAP.md`.
 
 `SPEC_QUESTION:` entries go below this line when a section is ambiguous.
