@@ -13,6 +13,7 @@ import {
   FOLLOWERS_TO_WIN,
   INTERACT_RANGE,
   NPC_LOCAL_SPEED,
+  NPC_TRAVEL_SPEED,
   PALACE_ZX,
   PALACE_ZY,
   PICKUP_RANGE,
@@ -28,6 +29,7 @@ import type { Item, Npc } from "./core/types";
 import { Game } from "./sim/game";
 import { Simulation } from "./sim/simulation";
 import { strikeDamage } from "./sim/combat";
+import { normalizeZone, worldX, worldY } from "./sim/pathing";
 import { IsoScene } from "./render/scene";
 import { buildDistrictGroup } from "./render/zoneView";
 import {
@@ -118,6 +120,7 @@ class App {
     this.wireBus();
     this.hud.show();
     this.hud.setClass(this.game.playerClass.label, this.game.playerClass.scoreMultiplier);
+    this.hud.setDay(1);
     this.hud.setHp(this.game.hp, this.game.maxHp);
     this.hud.setGold(this.game.gold);
     this.hud.setFollowers(0);
@@ -545,6 +548,7 @@ class App {
       const rt = this.ensureNpcRuntime(npc);
       const inPlayerZone = npc.zx === g.zx && npc.zy === g.zy;
       if (inPlayerZone) this.updateNpcBehavior(npc, rt, dt);
+      else if (npc.plan && !npc.yielded) this.followPlanFrame(npc, dt);
 
       const h = g.world.heightAt(npc.zx, npc.zy, npc.lx, npc.ly);
       rt.view.group.position.set(npc.zx * ZONE_SIZE + npc.lx, h, npc.zy * ZONE_SIZE + npc.ly);
@@ -605,6 +609,11 @@ class App {
       return;
     }
 
+    if (npc.plan) {
+      this.followPlanFrame(npc, dt);
+      return;
+    }
+
     rt.wanderTimer -= dt;
     if (rt.wanderTimer <= 0) {
       rt.wanderTimer = 2.5 + g.rng() * 4;
@@ -616,6 +625,23 @@ class App {
     }
     if (Math.hypot(rt.targetLx - npc.lx, rt.targetLy - npc.ly) > 0.6) {
       this.moveNpcToward(npc, rt.targetLx, rt.targetLy, NPC_LOCAL_SPEED * 0.7, dt);
+    }
+  }
+
+  // Walk a travel plan with collision, one frame at a time. Same waypoints
+  // the off-screen sim uses, so hand-off between the two is seamless.
+  private followPlanFrame(npc: Npc, dt: number): void {
+    const plan = npc.plan;
+    if (!plan) return;
+    const wp = plan.waypoints[plan.idx];
+    const targetLx = wp.zx * ZONE_SIZE + wp.lx - npc.zx * ZONE_SIZE;
+    const targetLy = wp.zy * ZONE_SIZE + wp.ly - npc.zy * ZONE_SIZE;
+    this.moveNpcToward(npc, targetLx, targetLy, NPC_TRAVEL_SPEED, dt);
+    const dist = Math.hypot(worldX(wp) - worldX(npc), worldY(wp) - worldY(npc));
+    if (dist < 1.0) {
+      plan.idx++;
+      normalizeZone(npc);
+      if (plan.idx >= plan.waypoints.length) npc.plan = null;
     }
   }
 
@@ -642,8 +668,12 @@ class App {
     const step = Math.min(speed * dt, d);
     const nx = npc.lx + (dx / d) * step;
     const ny = npc.ly + (dy / d) * step;
+    // Free movement when out of the district frame or standing somewhere
+    // unwalkable (e.g. an off-screen ghost-walk ended on water): the NPC may
+    // pass through blockers until back on legal ground.
     const outside = npc.lx < 0 || npc.ly < 0 || npc.lx >= ZONE_SIZE || npc.ly >= ZONE_SIZE;
-    if (outside || this.game.world.isWalkable(npc.zx, npc.zy, nx, ny)) {
+    const freeMove = outside || !this.game.world.isWalkable(npc.zx, npc.zy, npc.lx, npc.ly);
+    if (freeMove || this.game.world.isWalkable(npc.zx, npc.zy, nx, ny)) {
       npc.lx = nx;
       npc.ly = ny;
     } else if (this.game.world.isWalkable(npc.zx, npc.zy, nx, npc.ly)) {
@@ -702,6 +732,7 @@ class App {
         this.minimapTimer = 0.5;
         this.hud.drawMinimap(this.game);
         this.hud.updateInventory(this.game);
+        this.hud.setDay(this.game.day);
         this.refreshDistricts();
       }
       this.iso.follow(this.playerWorldPos(), dt);

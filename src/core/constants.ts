@@ -22,10 +22,17 @@ export const NPC_LOCAL_SPEED = 3.2;
 export const INTERACT_RANGE = 3.2; // world units to open action bar
 export const PICKUP_RANGE = 2.2;
 
+// ---- Time ----
+export const GAME_DAY_SECONDS = 120; // real seconds per in-game day
+
 // ---- Living world simulation ----
 export const NAMED_NPC_COUNT = 30;
 export const SIM_TICK_SECONDS = 2.0; // global AI heartbeat
-export const NPC_WANDER_CHANCE = 0.22; // per tick, chance an off-screen NPC changes district
+export const NPC_WANDER_CHANCE = 0.22; // per tick, chance an idle off-screen NPC plans a trip
+export const NPC_TRAVEL_SPEED = 4.5; // world units / s while walking a travel plan
+export const WANDER_RADIUS = 2; // max district distance for a wander destination
+export const PLAN_TIMEOUT_TICKS = 60; // abandon a travel plan after this many sim ticks
+export const GATE_INSET_TILES = 1.5; // gate waypoints sit this far inside each district
 export const NPC_FIGHT_CHANCE = 0.035; // per tick, two hostile-aligned NPCs in same district
 export const NPC_FLEE_HEALTH = 0.35;
 export const RIVAL_RECRUIT_SECONDS = 40; // Ishido recruits one NPC this often

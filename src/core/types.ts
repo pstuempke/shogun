@@ -29,6 +29,19 @@ export type Allegiance = "none" | "player" | "rival";
 
 export type FollowerOrder = "follow" | "wait" | "guard";
 
+export interface Waypoint {
+  zx: number;
+  zy: number;
+  lx: number;
+  ly: number;
+}
+
+export interface TravelPlan {
+  waypoints: Waypoint[];
+  idx: number;
+  ticksLeft: number; // sim-tick budget; abandoned when exhausted (stuck)
+}
+
 export interface Npc {
   id: number;
   name: string;
@@ -50,6 +63,7 @@ export interface Npc {
   yielded: boolean;
   isRivalLeader: boolean;
   carrying: number | null; // item id the NPC picked up
+  plan: TravelPlan | null; // active walking route; NPCs never teleport
 }
 
 export type ItemKind = "koban" | "gift" | "weapon" | "sacred";

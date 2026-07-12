@@ -43,9 +43,18 @@ its four notorious flaws:
 - **30 named NPCs** (from the novel + archetypes) spawn scattered across
   the map. Each has role, rank (0–5), HP, attack, and a disposition toward
   the player (−100…100).
-- A global heartbeat (every `SIM_TICK_SECONDS`) drives off-screen NPCs:
-  they wander between districts, slowly heal, and brawl (hostile/rival
-  NPCs attack civilians; losers are wounded or occasionally die).
+- **NPCs walk, never teleport.** An idle NPC periodically plans a trip to
+  a district within `WANDER_RADIUS` (never the palace): BFS over the
+  district graph produces gate-to-gate waypoints, walked at
+  `NPC_TRAVEL_SPEED`. Off-screen NPCs advance along the same waypoints
+  each sim tick; visible NPCs walk them per-frame with collision. Plans
+  time out after `PLAN_TIMEOUT_TICKS` if stuck.
+- **In-game clock**: `GAME_DAY_SECONDS` real seconds = 1 day, shown in
+  the HUD ("Day N").
+- A global heartbeat (every `SIM_TICK_SECONDS`) also heals wounded
+  off-screen NPCs and drives brawls (hostile/rival NPCs attack civilians;
+  losers are wounded or occasionally die). Routine travel is **not**
+  reported on the ticker.
 - **Lord Ishido** is the rival leader: every `RIVAL_RECRUIT_SECONDS` he
   recruits an unaffiliated NPC to his banner (cap: `RIVAL_MAX_FOLLOWERS`).
   Rival-aligned NPCs take a persuasion penalty to poach back.

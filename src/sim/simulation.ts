@@ -1,25 +1,23 @@
 import {
   NPC_FIGHT_CHANCE,
   NPC_FLEE_HEALTH,
+  NPC_TRAVEL_SPEED,
   NPC_WANDER_CHANCE,
+  PALACE_ZX,
+  PALACE_ZY,
   RIVAL_MAX_FOLLOWERS,
   RIVAL_RECRUIT_SECONDS,
   RUMOR_SECONDS,
   SIM_TICK_SECONDS,
+  WANDER_RADIUS,
   WORLD_H,
   WORLD_W,
 } from "../core/constants";
 import type { Npc } from "../core/types";
 import { pick } from "../core/rng";
 import { resolveOffscreenFight } from "./combat";
+import { advancePlan, planRoute } from "./pathing";
 import type { Game } from "./game";
-
-const DIRS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
 
 // The living world: every heartbeat, off-screen NPCs wander between
 // districts, brawl, heal, and Lord Ishido gathers his own retinue. Every
@@ -53,13 +51,25 @@ export class Simulation {
     const rng = game.rng;
     for (const npc of game.npcs) {
       if (!npc.alive) continue;
-      const onScreen = npc.zx === game.zx && npc.zy === game.zy;
-      const travelling = npc.allegiance !== "player" || npc.order === "wait";
-      if (!onScreen && travelling && rng() < NPC_WANDER_CHANCE && npc.order !== "guard") {
-        this.wander(game, npc);
+      // Visible NPCs (player's 3x3 neighborhood) are walked per-frame by the
+      // renderer loop; the sim only advances the ones nobody can see.
+      const visible = Math.abs(npc.zx - game.zx) <= 1 && Math.abs(npc.zy - game.zy) <= 1;
+      if (npc.plan) {
+        npc.plan.ticksLeft--;
+        if (npc.plan.ticksLeft <= 0) {
+          npc.plan = null; // stuck or stale — give up and re-decide later
+        } else if (!visible) {
+          advancePlan(npc, NPC_TRAVEL_SPEED * SIM_TICK_SECONDS);
+        }
+      } else if (
+        npc.allegiance !== "player" &&
+        !npc.yielded &&
+        rng() < NPC_WANDER_CHANCE
+      ) {
+        this.startJourney(game, npc);
       }
       // Wounded NPCs slowly recover between encounters.
-      if (npc.hp < npc.maxHp && !onScreen) {
+      if (npc.hp < npc.maxHp && !visible) {
         npc.hp = Math.min(npc.maxHp, npc.hp + 1);
         if (npc.yielded && npc.hp / npc.maxHp > NPC_FLEE_HEALTH) npc.yielded = false;
       }
@@ -67,21 +77,24 @@ export class Simulation {
     this.maybeFight(game);
   }
 
-  private wander(game: Game, npc: Npc): void {
-    const options = DIRS.filter(
-      ([dx, dy]) =>
-        npc.zx + dx >= 0 && npc.zx + dx < WORLD_W && npc.zy + dy >= 0 && npc.zy + dy < WORLD_H,
-    );
-    const [dx, dy] = pick(game.rng, options);
-    npc.zx += dx;
-    npc.zy += dy;
-    const p = game.world.randomWalkableTile(npc.zx, npc.zy, game.rng);
-    npc.lx = p.lx;
-    npc.ly = p.ly;
-    if (npc.rank >= 4 || npc.isRivalLeader) {
-      const dir = dy < 0 ? "north" : dy > 0 ? "south" : dx > 0 ? "east" : "west";
-      game.ticker(`${npc.name} travels ${dir} to ${game.world.district(npc.zx, npc.zy).name}.`, "info");
+  // Pick a destination district a short walk away and start walking there.
+  private startJourney(game: Game, npc: Npc): void {
+    const candidates: { zx: number; zy: number }[] = [];
+    for (let dy = -WANDER_RADIUS; dy <= WANDER_RADIUS; dy++) {
+      for (let dx = -WANDER_RADIUS; dx <= WANDER_RADIUS; dx++) {
+        const zx = npc.zx + dx;
+        const zy = npc.zy + dy;
+        const dist = Math.abs(dx) + Math.abs(dy);
+        if (dist === 0 || dist > WANDER_RADIUS) continue;
+        if (zx < 0 || zx >= WORLD_W || zy < 0 || zy >= WORLD_H) continue;
+        if (zx === PALACE_ZX && zy === PALACE_ZY) continue;
+        candidates.push({ zx, zy });
+      }
     }
+    if (candidates.length === 0) return;
+    const dest = pick(game.rng, candidates);
+    const p = game.world.randomWalkableTile(dest.zx, dest.zy, game.rng);
+    npc.plan = planRoute(npc, dest.zx, dest.zy, p.lx, p.ly);
   }
 
   private maybeFight(game: Game): void {

@@ -28,6 +28,7 @@ function makeNpc(overrides: Partial<Npc> = {}): Npc {
     yielded: false,
     isRivalLeader: false,
     carrying: null,
+    plan: null,
     ...overrides,
   };
 }

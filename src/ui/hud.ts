@@ -39,6 +39,10 @@ export class Hud {
     this.el("stat-class").textContent = `${label} ×${mult}`;
   }
 
+  setDay(day: number): void {
+    this.el("stat-day").textContent = `Day ${day}`;
+  }
+
   setHp(hp: number, maxHp: number): void {
     const frac = Math.max(0, hp / maxHp);
     this.el("hp-bar").style.width = `${frac * 100}%`;

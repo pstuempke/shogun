@@ -1,5 +1,6 @@
 import {
   FOLLOWERS_TO_WIN,
+  GAME_DAY_SECONDS,
   KOBAN_PICKUP_MAX,
   KOBAN_PICKUP_MIN,
   PALACE_ZX,
@@ -122,6 +123,7 @@ export class Game {
         yielded: false,
         isRivalLeader: r.isRivalLeader,
         carrying: null,
+        plan: null,
       };
     });
   }
@@ -175,6 +177,10 @@ export class Game {
   }
 
   // ---- queries ----
+
+  get day(): number {
+    return Math.floor(this.elapsed / GAME_DAY_SECONDS) + 1;
+  }
 
   get followers(): Npc[] {
     return this.npcs.filter((n) => n.alive && n.allegiance === "player");
