@@ -559,6 +559,7 @@ class App {
         rt.view.group.scale.setScalar(1 + rt.hitFlash * 0.8);
         rt.view.group.scale.y *= npc.yielded ? 0.6 : 1;
       }
+      rt.view.bubble.visible = npc.behavior?.kind === "chat";
       const mat = rt.view.body.material as THREE.MeshStandardMaterial;
       if (rt.telegraph > 0) {
         mat.emissive.setHex(0xaa2211);
@@ -612,6 +613,17 @@ class App {
 
     if (npc.plan) {
       this.followPlanFrame(npc, dt);
+      return;
+    }
+
+    // Chatting and resting NPCs hold their ground.
+    if (npc.behavior && (npc.behavior.kind === "chat" || npc.behavior.kind === "rest")) {
+      const partner = npc.behavior.partnerId >= 0 ? this.game.npcs[npc.behavior.partnerId] : null;
+      if (partner) {
+        const dx = partner.lx - npc.lx;
+        const dy = partner.ly - npc.ly;
+        if (Math.hypot(dx, dy) > 0.1) rt.view.group.rotation.y = Math.atan2(dx, dy);
+      }
       return;
     }
 

@@ -58,9 +58,21 @@ its four notorious flaws:
 - **Lord Ishido** is the rival leader: every `RIVAL_RECRUIT_SECONDS` he
   recruits an unaffiliated NPC to his banner (cap: `RIVAL_MAX_FOLLOWERS`).
   Rival-aligned NPCs take a persuasion penalty to poach back.
+- **Utility brain**: every non-follower NPC has four needs (rest, social,
+  purpose, safety) that drift each tick, and personality traits (brave,
+  gregarious, greedy, pious — role defaults in `ROLE_TRAITS`, tuned per
+  character). Idle NPCs score candidate behaviors (`idle`, `work`, `rest`,
+  `socialize`, `flee`) and act: peasants tend paddies, merchants hold
+  market in villages, monks pray at the temple, nobles hold court, and
+  samurai/ronin/bandits patrol. Wounded NPCs favor rest (extra healing);
+  witnessed violence spikes `safety`, and the un-brave flee the district.
+- **Chats**: a socializing NPC walks to a partner with affinity ≥
+  `SOCIAL_MIN_AFFINITY`; within `CHAT_RANGE` both chat for `CHAT_TICKS`
+  (visible speech bubble), gaining affinity and exchanging gossip, then
+  cool down for `CHAT_COOLDOWN_TICKS`.
 - **Relationships**: every NPC pair has a symmetric affinity (−100…100),
   seeded by role (bandits despised, monks liked, same-role kinship, plus
-  seeded noise) and shifted by events.
+  seeded noise) and shifted by chats and events.
 - **Memory**: each NPC keeps up to `MEMORY_CAPACITY` memories of events
   witnessed in their district (fights, deaths, recruitments, treasure
   sightings — treasure memories are never evicted first). NPCs sharing a
@@ -174,7 +186,8 @@ bonus) × class multiplier.
 | Title / pause / end screens | [x] |
 | Walking NPC travel + in-game clock (WP1) | [x] |
 | Relationships, memory, gossip, ask-for-news (WP2) | [x] |
-| Unit tests (58) | [x] |
+| Utility brain: needs, traits, behaviors, chats (WP3) | [x] |
+| Unit tests (68) | [x] |
 
 Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
 behaviors, NPC↔NPC social life, memory/news, follower combat, recovery

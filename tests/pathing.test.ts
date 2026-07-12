@@ -36,6 +36,10 @@ function walker(zx: number, zy: number, lx = 20, ly = 20): Npc {
     carrying: null,
     plan: null,
     memories: [],
+    traits: { brave: 0.5, gregarious: 0.5, greedy: 0.5, pious: 0.5 },
+    needs: { rest: 0, social: 0, purpose: 0, safety: 0 },
+    behavior: null,
+    chatCooldown: 0,
   };
 }
 

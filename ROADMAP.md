@@ -193,7 +193,7 @@ Do them **in order**; each WP is one agent-sized task, ends green
 section, and adds tests for every new sim/core function. Keep each WP a
 single commit/PR.
 
-### WP1 — Clock, district graph, walking travel *(foundation, no visuals)*
+### WP1 — Clock, district graph, walking travel ✅ DONE
 - `src/core/constants.ts`: `GAME_DAY_SECONDS`, `NPC_TRAVEL_SPEED`,
   gate-waypoint constants.
 - `src/sim/pathing.ts` (new): district BFS, `planRoute(world, from, to):
@@ -208,7 +208,7 @@ single commit/PR.
   adjacent district), no-teleport invariant over 500 ticks, determinism
   per seed.
 
-### WP2 — Relationships, memory, ask-about-news
+### WP2 — Relationships, memory, ask-about-news ✅ DONE
 - `src/sim/social.ts`: affinity storage + seeding, `affinity(a,b)`,
   `shiftAffinity`.
 - `src/sim/memory.ts` (new): ring buffer, `recordWitnessed(...)` hooks
@@ -221,7 +221,7 @@ single commit/PR.
 - **Tests**: memory eviction & treasure retention, gossip dedup,
   narration strings, minimap gating logic (pure part).
 
-### WP3 — Utility brain (needs, traits, behaviors)
+### WP3 — Utility brain (needs, traits, behaviors) ✅ DONE
 - `ROSTER`: add trait values per NPC (hand-tuned, they're characters).
 - `src/sim/brain.ts` (new): needs drift, `scoreBehaviors`, behavior
   state machine (`npc.behavior: { kind, target?, until }`); `work`

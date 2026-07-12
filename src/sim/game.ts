@@ -4,6 +4,7 @@ import {
   KOBAN_PICKUP_MAX,
   NEWS_MEMORIES_SHOWN,
   NEWS_MIN_DISPOSITION,
+  SAFETY_WITNESS_SPIKE,
   TREASURE_WITNESSES,
   KOBAN_PICKUP_MIN,
   PALACE_ZX,
@@ -141,6 +142,15 @@ export class Game {
         carrying: null,
         plan: null,
         memories: [],
+        traits: r.traits,
+        needs: {
+          rest: this.rng() * 30,
+          social: this.rng() * 40,
+          purpose: this.rng() * 50,
+          safety: 0,
+        },
+        behavior: null,
+        chatCooldown: 0,
       };
     });
     this.affinities = seedAffinities(this.npcs, this.rng);
@@ -215,10 +225,14 @@ export class Game {
   }
 
   // Every living NPC sharing the district witnesses the event first-hand.
+  // Violence rattles bystanders (their safety need spikes, see brain.ts).
   witness(kind: MemoryKind, subjectId: number, objectId: number, zx: number, zy: number): void {
     for (const npc of this.npcs) {
       if (!npc.alive || npc.zx !== zx || npc.zy !== zy) continue;
       remember(npc, { day: this.day, kind, subjectId, objectId, zx, zy, secondhand: false });
+      if ((kind === "fight" || kind === "death") && npc.id !== subjectId) {
+        npc.needs.safety = Math.min(100, npc.needs.safety + SAFETY_WITNESS_SPIKE);
+      }
     }
   }
 

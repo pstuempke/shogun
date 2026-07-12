@@ -28,7 +28,6 @@ export const GAME_DAY_SECONDS = 120; // real seconds per in-game day
 // ---- Living world simulation ----
 export const NAMED_NPC_COUNT = 30;
 export const SIM_TICK_SECONDS = 2.0; // global AI heartbeat
-export const NPC_WANDER_CHANCE = 0.22; // per tick, chance an idle off-screen NPC plans a trip
 export const NPC_TRAVEL_SPEED = 4.5; // world units / s while walking a travel plan
 export const WANDER_RADIUS = 2; // max district distance for a wander destination
 export const PLAN_TIMEOUT_TICKS = 60; // abandon a travel plan after this many sim ticks
@@ -52,6 +51,26 @@ export const AFFINITY_SAME_ROLE = 15;
 export const AFFINITY_MONK_BONUS = 20; // everyone likes monks
 export const AFFINITY_BANDIT_PENALTY = -60; // nobody likes bandits
 export const AFFINITY_NOISE = 10; // seeded per-pair variation
+
+// ---- Utility brain (needs & behaviors) ----
+export const NEED_REST_RATE = 0.5; // per tick
+export const NEED_SOCIAL_RATE = 1.2; // per tick, scaled by gregarious
+export const NEED_PURPOSE_RATE = 0.9; // per tick
+export const SAFETY_DECAY = 3; // per tick
+export const SAFETY_WITNESS_SPIKE = 45; // added when violence is witnessed
+export const REST_LOW_HP_BONUS = 30; // rest score bonus when wounded
+export const IDLE_SCORE = 14; // baseline so nobody acts on trivial needs
+export const WORK_TICKS = 8; // ticks spent working on arrival
+export const REST_TICKS = 6;
+export const REST_HEAL = 3; // extra hp per resting tick
+export const CHAT_RANGE = 3.5; // world units to start a chat
+export const CHAT_TICKS = 3;
+export const CHAT_AFFINITY_GAIN = 8;
+export const CHAT_COOLDOWN_TICKS = 15;
+export const SOCIAL_MIN_AFFINITY = -10; // won't seek out people below this
+export const SOCIALIZE_PATIENCE = 20; // give up finding the partner after this many ticks
+export const SOCIAL_SEARCH_DISTRICTS = 2; // how far NPCs look for company
+export const FLEE_SAFETY_THRESHOLD = 50; // above this, fleeing dominates
 
 // ---- Social system ----
 export const FOLLOWERS_TO_WIN = 20;

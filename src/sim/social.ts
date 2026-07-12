@@ -94,6 +94,8 @@ export function attemptBefriend(p: Persuader, npc: Npc, roll: number): BefriendR
     npc.allegiance = "player";
     npc.order = "follow";
     npc.hostile = false;
+    npc.plan = null; // drop whatever life they were living — they serve you now
+    npc.behavior = null;
     npc.disposition = clampDisposition(npc.disposition + 20);
   } else {
     npc.disposition = clampDisposition(npc.disposition - DISPOSITION_FAIL_PENALTY);
@@ -114,6 +116,8 @@ export function attemptBribe(gold: number, npc: Npc): { outcome: BribeOutcome; c
   npc.allegiance = "player";
   npc.order = "follow";
   npc.hostile = false;
+  npc.plan = null;
+  npc.behavior = null;
   npc.disposition = clampDisposition(npc.disposition + 10);
   return { outcome: "success", cost };
 }

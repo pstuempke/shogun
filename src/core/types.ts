@@ -45,6 +45,30 @@ export interface TravelPlan {
 // The player is not an NPC; memories about the player use this id.
 export const PLAYER_ID = -2;
 
+// Personality, 0..1 each. Scales behavior scoring and social outcomes.
+export interface Traits {
+  brave: number; // fight vs flee; intervention (WP4)
+  gregarious: number; // how fast the social need grows
+  greedy: number; // trade pricing, bribe appetite
+  pious: number; // temple visits, rest preference
+}
+
+// Sims-like drives, 0..100. Higher = more urgent.
+export interface Needs {
+  rest: number;
+  social: number;
+  purpose: number; // do my role's work
+  safety: number; // spiked by witnessed violence, decays
+}
+
+export type BehaviorKind = "idle" | "work" | "rest" | "socialize" | "chat" | "flee";
+
+export interface NpcBehavior {
+  kind: BehaviorKind;
+  until: number; // remaining sim ticks (paused while walking a plan)
+  partnerId: number; // chat/socialize partner, else -1
+}
+
 export type MemoryKind = "fight" | "death" | "recruit" | "treasure";
 
 export interface Memory {
@@ -80,6 +104,10 @@ export interface Npc {
   carrying: number | null; // item id the NPC picked up
   plan: TravelPlan | null; // active walking route; NPCs never teleport
   memories: Memory[]; // what this NPC witnessed or heard, freshest last
+  traits: Traits;
+  needs: Needs;
+  behavior: NpcBehavior | null;
+  chatCooldown: number; // sim ticks before this NPC will chat again
 }
 
 export type ItemKind = "koban" | "gift" | "weapon" | "sacred";
