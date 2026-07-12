@@ -1,0 +1,86 @@
+// All game tunables live here. No magic numbers in system files.
+
+// ---- World layout ----
+export const WORLD_W = 7; // districts across
+export const WORLD_H = 7; // districts down
+export const ZONE_TILES = 22; // tiles per district side
+export const TILE = 2; // world units per tile
+export const ZONE_SIZE = ZONE_TILES * TILE; // world units per district side
+export const WORLD_SEED = 1600; // Battle of Sekigahara
+
+// Palace district (Phase transition happens here)
+export const PALACE_ZX = 3;
+export const PALACE_ZY = 0;
+// Temple district (respawn point after ransom)
+export const TEMPLE_ZX = 1;
+export const TEMPLE_ZY = 5;
+
+// ---- Player movement ----
+export const PLAYER_SPEED = 9; // world units / s
+export const PLAYER_RADIUS = 0.55;
+export const NPC_LOCAL_SPEED = 3.2;
+export const INTERACT_RANGE = 3.2; // world units to open action bar
+export const PICKUP_RANGE = 2.2;
+
+// ---- Living world simulation ----
+export const NAMED_NPC_COUNT = 30;
+export const SIM_TICK_SECONDS = 2.0; // global AI heartbeat
+export const NPC_WANDER_CHANCE = 0.22; // per tick, chance an off-screen NPC changes district
+export const NPC_FIGHT_CHANCE = 0.035; // per tick, two hostile-aligned NPCs in same district
+export const NPC_FLEE_HEALTH = 0.35;
+export const RIVAL_RECRUIT_SECONDS = 40; // Ishido recruits one NPC this often
+export const RIVAL_MAX_FOLLOWERS = 12;
+export const TICKER_MAX_LINES = 5;
+export const RUMOR_SECONDS = 25; // ticker hint cadence in phase 2
+
+// ---- Social system ----
+export const FOLLOWERS_TO_WIN = 20;
+export const BEFRIEND_BASE_DIFFICULTY = 55; // roll-under target modifiers apply to this
+export const DISPOSITION_MIN = -100;
+export const DISPOSITION_MAX = 100;
+export const DISPOSITION_BEFRIEND_BONUS = 0.35; // disposition * this added to persuasion
+export const DISPOSITION_FAIL_PENALTY = 8; // failed befriend lowers disposition
+export const DISPOSITION_GIFT_DIVISOR = 2; // gift value / this => disposition gain
+export const RANK_GAP_PENALTY = 14; // persuasion penalty per rank the NPC is above you
+export const RANK_GAP_BONUS = 5; // bonus per rank the NPC is below you
+export const FOLLOWER_MOMENTUM = 1.5; // each existing follower adds this to persuasion
+export const RIVAL_ALIGNED_PENALTY = 25; // NPC already sworn to the rival
+export const BRIBE_BASE_COST = 40; // koban; scaled by NPC rank
+export const BRIBE_RANK_MULT = 35;
+export const BRIBE_DISPOSITION_FLOOR = -40; // too hostile to bribe below this
+
+// ---- Combat ----
+export const PLAYER_BASE_HP = 100;
+export const ATTACK_RANGE = 2.4;
+export const ATTACK_ARC_DOT = 0.25; // facing tolerance
+export const ATTACK_COOLDOWN = 0.45; // s
+export const DODGE_SPEED = 22;
+export const DODGE_TIME = 0.22;
+export const DODGE_COOLDOWN = 0.9;
+export const DODGE_IFRAMES = 0.3;
+export const ENEMY_TELEGRAPH = 0.5; // windup before an enemy strike lands
+export const ENEMY_STRIKE_RANGE = 2.2;
+export const ENEMY_ATTACK_COOLDOWN = 1.4;
+export const YIELD_THRESHOLD = 0.25; // NPC yields (can be spared) below this HP fraction
+export const OFFSCREEN_FIGHT_SWING = 20; // damage variance in simulated fights
+
+// ---- Economy ----
+export const KOBAN_PICKUP_MIN = 15;
+export const KOBAN_PICKUP_MAX = 60;
+export const RANSOM_GOLD_FRACTION = 0.5; // lost on defeat (normal mode)
+export const RANSOM_FOLLOWER_FRACTION = 0.5;
+
+// ---- Quest / scoring ----
+export const SACRED_ITEM_COUNT = 4;
+export const SCORE_PER_FOLLOWER = 100;
+export const SCORE_PER_SACRED_ITEM = 250;
+export const SCORE_GOLD_WEIGHT = 1;
+export const SCORE_TIME_BONUS_MAX = 2000;
+export const SCORE_TIME_PAR_SECONDS = 1500; // finish faster than this for full bonus
+
+// ---- Camera ----
+export const CAM_DISTANCE = 34;
+export const CAM_ZOOM_MIN = 14;
+export const CAM_ZOOM_MAX = 30;
+export const CAM_VIEW_HEIGHT = 21; // ortho half-height in world units
+export const CAM_LERP = 4.5; // follow smoothing

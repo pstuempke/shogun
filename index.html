@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SHOGUN — Rise to the Shogunate</title>
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+    <div id="hud" hidden>
+      <div id="topbar">
+        <div class="stat" id="stat-class"></div>
+        <div class="stat" id="hp-wrap">
+          <div id="hp-track"><div id="hp-bar"></div></div>
+          <span id="hp-text"></span>
+        </div>
+        <div class="stat" id="stat-gold"></div>
+        <div class="stat" id="stat-followers"></div>
+        <div class="stat" id="objective"></div>
+      </div>
+      <div id="zone-name"></div>
+      <canvas id="minimap" width="147" height="147"></canvas>
+      <div id="inventory"></div>
+      <div id="ticker"></div>
+      <div id="actionbar"></div>
+      <div id="toast" hidden></div>
+      <div id="controls-hint">WASD move · Space attack · Shift dodge · wheel zoom · Esc menu</div>
+    </div>
+    <div id="screen"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

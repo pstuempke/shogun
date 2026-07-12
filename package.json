@@ -1,0 +1,23 @@
+{
+  "name": "shogun",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A modern 3D isometric remake of the 1986 Gang of Five Shogun",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.166.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.166.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
