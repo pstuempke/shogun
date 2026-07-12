@@ -34,6 +34,7 @@ function makeNpc(id: number, overrides: Partial<Npc> = {}): Npc {
     needs: { rest: 0, social: 0, purpose: 0, safety: 0 },
     behavior: null,
     chatCooldown: 0,
+    mission: null,
     ...overrides,
   };
 }

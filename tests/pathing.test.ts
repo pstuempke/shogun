@@ -40,6 +40,7 @@ function walker(zx: number, zy: number, lx = 20, ly = 20): Npc {
     needs: { rest: 0, social: 0, purpose: 0, safety: 0 },
     behavior: null,
     chatCooldown: 0,
+    mission: null,
   };
 }
 

@@ -1,8 +1,10 @@
 import {
+  ENVOY_PERSUASION_SHARE,
   FOLLOWERS_TO_WIN,
   GAME_DAY_SECONDS,
   KOBAN_PICKUP_MAX,
   NEWS_MEMORIES_SHOWN,
+  ORDER_ATTACK_DISPOSITION_HIT,
   NEWS_MIN_DISPOSITION,
   SAFETY_WITNESS_SPIKE,
   TREASURE_WITNESSES,
@@ -45,7 +47,9 @@ import {
   type AffinityMap,
 } from "./social";
 import { npcShouldYield } from "./combat";
+import { startFight } from "./fights";
 import { narrateMemory, remember } from "./memory";
+import { planRoute } from "./pathing";
 import { finalScore, questComplete, readyForAudience, sacredItemDistricts, SACRED_NAMES } from "./quest";
 
 const GIFT_NAMES: [string, number][] = [
@@ -154,6 +158,7 @@ export class Game {
         },
         behavior: null,
         chatCooldown: 0,
+        mission: null,
       };
     });
     this.affinities = seedAffinities(this.npcs, this.rng);
@@ -419,6 +424,7 @@ export class Game {
   setOrder(npc: Npc, order: FollowerOrder): void {
     if (npc.allegiance !== "player") return;
     npc.order = order;
+    npc.mission = null;
     const words: Record<FollowerOrder, string> = {
       follow: "falls in behind you",
       wait: "will wait here",
@@ -427,12 +433,59 @@ export class Game {
     this.ticker(`${npc.name} ${words[order]}.`, "info");
   }
 
+  // Sic a follower on a target: opens a staged fight the whole district
+  // can see (and intervene in). The target will not forgive this.
+  orderAttack(follower: Npc, target: Npc): string {
+    if (follower.allegiance !== "player") return "They do not serve you.";
+    if (target.allegiance === "player") return "You will not turn your own against each other.";
+    const fight = startFight(this, follower, target);
+    if (!fight) return `${target.name} cannot be attacked right now.`;
+    target.disposition = Math.max(-100, target.disposition - ORDER_ATTACK_DISPOSITION_HIT);
+    this.ticker(`${follower.name} attacks ${target.name} at your command!`, "bad");
+    return `${follower.name} draws steel against ${target.name}.`;
+  }
+
+  // Dispatch a follower to persuade a distant NPC on your behalf.
+  sendEnvoy(follower: Npc, target: Npc): string {
+    if (follower.allegiance !== "player") return "They do not serve you.";
+    if (target.allegiance === "player") return `${target.name} already follows you.`;
+    if (follower.mission) return `${follower.name} is already on an errand.`;
+    follower.mission = { targetId: target.id, stage: "travel", hops: 0 };
+    follower.order = "wait"; // released from the retinue while on the errand
+    follower.plan = planRoute(follower, target.zx, target.zy, target.lx, target.ly);
+    this.ticker(`${follower.name} sets out to win ${target.name} to your cause.`, "info");
+    return `${follower.name} departs as your envoy.`;
+  }
+
+  // The envoy has reached the target: roll persuasion with the envoy's own
+  // standing, backed by a share of your reputation and momentum.
+  envoyAttempt(envoy: Npc, target: Npc): boolean {
+    const persuader = {
+      persuasion: this.playerClass.persuasion * ENVOY_PERSUASION_SHARE,
+      rank: envoy.rank,
+      followerCount: this.followerCount,
+    };
+    const res = attemptBefriend(persuader, target, this.rng());
+    if (res.success) {
+      this.ticker(`Your envoy ${envoy.name} has won ${target.name} to your banner!`, "good");
+      this.bus.emit("npcAllegiance", { id: target.id });
+      this.bus.emit("followerChange", { count: this.followerCount });
+      this.witness("recruit", PLAYER_ID, target.id, target.zx, target.zy);
+      // The new follower walks to wherever you are now.
+      target.plan = planRoute(target, this.zx, this.zy, this.lx, this.ly);
+      this.checkGatheringProgress();
+    } else {
+      this.ticker(`${target.name} turns your envoy away. (${Math.round(res.chance)}% odds)`, "bad");
+    }
+    return res.success;
+  }
+
   // ---- combat outcomes (real-time loop applies damage; this handles state) ----
 
-  damageNpc(npc: Npc, dmg: number): "dead" | "yielded" | "fighting" {
+  damageNpc(npc: Npc, dmg: number, killerId: number = PLAYER_ID): "dead" | "yielded" | "fighting" {
     npc.hp -= dmg;
     if (npc.hp <= 0) {
-      this.npcDeath(PLAYER_ID, npc);
+      this.npcDeath(killerId, npc);
       return "dead";
     }
     if (npcShouldYield(npc)) {

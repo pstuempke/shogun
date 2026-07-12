@@ -111,6 +111,14 @@ export const ENEMY_STRIKE_RANGE = 2.2;
 export const ENEMY_ATTACK_COOLDOWN = 1.4;
 export const YIELD_THRESHOLD = 0.25; // NPC yields (can be spared) below this HP fraction
 
+// ---- Followers in combat & envoy errands ----
+export const FOLLOWER_RETREAT_HP = 0.3; // followers stop assisting below this HP fraction
+export const FOLLOWER_ATTACK_COOLDOWN = 1.1; // s between follower strikes
+export const FOLLOWER_ASSIST_RANGE = 16; // world units from the player they will engage within
+export const ENVOY_PERSUASION_SHARE = 0.8; // of the player's persuasion an envoy carries
+export const ENVOY_MAX_HOPS = 3; // re-plans chasing a moving target before giving up
+export const ORDER_ATTACK_DISPOSITION_HIT = 40; // being jumped by your goons is not endearing
+
 // ---- Economy ----
 export const KOBAN_PICKUP_MIN = 15;
 export const KOBAN_PICKUP_MAX = 60;

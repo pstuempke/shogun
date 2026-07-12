@@ -244,7 +244,7 @@ single commit/PR.
 - **Tests**: fight lifecycle, intervention threshold math, no
   simultaneous duplicate fights per NPC, pool-viability still enforced.
 
-### WP5 — Follower combat assist & envoy orders
+### WP5 — Follower combat assist & envoy orders ✅ DONE
 - `main.ts`: followers auto-join fights involving the player (side
   logic via WP4 fight entities), retreat at `FOLLOWER_RETREAT_HP`.
 - Order menu: "Attack…" (district target chooser), "Befriend… (envoy)"

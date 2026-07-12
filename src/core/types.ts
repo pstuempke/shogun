@@ -80,6 +80,13 @@ export interface NpcBehavior {
   partnerId: number; // chat/socialize partner, else -1
 }
 
+// A follower dispatched to persuade another NPC on the player's behalf.
+export interface EnvoyMission {
+  targetId: number;
+  stage: "travel" | "return";
+  hops: number; // re-plans consumed chasing a moving target
+}
+
 export type MemoryKind = "fight" | "death" | "recruit" | "treasure";
 
 export interface Memory {
@@ -119,6 +126,7 @@ export interface Npc {
   needs: Needs;
   behavior: NpcBehavior | null;
   chatCooldown: number; // sim ticks before this NPC will chat again
+  mission: EnvoyMission | null; // active envoy errand (followers only)
 }
 
 export type ItemKind = "koban" | "gift" | "weapon" | "sacred";

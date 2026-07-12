@@ -11,6 +11,9 @@ import {
   ENEMY_STRIKE_RANGE,
   ENEMY_TELEGRAPH,
   FOLLOWERS_TO_WIN,
+  FOLLOWER_ASSIST_RANGE,
+  FOLLOWER_ATTACK_COOLDOWN,
+  FOLLOWER_RETREAT_HP,
   INTERACT_RANGE,
   NPC_LOCAL_SPEED,
   NPC_TRAVEL_SPEED,
@@ -399,10 +402,63 @@ class App {
         { label: "Follow me", value: "follow" },
         { label: "Wait here", value: "wait" },
         { label: "Stand guard in this district", value: "guard" },
+        { label: "Attack someone nearby…", value: "attack" },
+        { label: "Go befriend someone for me (envoy)…", value: "envoy" },
       ],
       (v) => {
         this.state = "playing";
-        if (v) this.game.setOrder(npc, v as Npc["order"]);
+        if (v === "attack") this.openOrderAttack(npc);
+        else if (v === "envoy") this.openOrderEnvoy(npc);
+        else if (v) this.game.setOrder(npc, v as Npc["order"]);
+      },
+    );
+  }
+
+  private openOrderAttack(follower: Npc): void {
+    const g = this.game;
+    const targets = g
+      .npcsInZone(g.zx, g.zy)
+      .filter((n) => n.allegiance !== "player" && !n.yielded && n !== follower);
+    if (targets.length === 0) {
+      this.hud.toast("No one here worth attacking.");
+      return;
+    }
+    this.state = "chooser";
+    showChooser(
+      `${shortName(follower)} attacks whom?`,
+      targets.map((t) => ({ label: `${t.name} (${t.role})`, value: String(t.id) })),
+      (v) => {
+        this.state = "playing";
+        if (v === null) return;
+        this.hud.toast(g.orderAttack(follower, g.npcs[Number(v)]));
+      },
+    );
+  }
+
+  private openOrderEnvoy(follower: Npc): void {
+    const g = this.game;
+    const candidates = g.npcs
+      .filter((n) => n.alive && n.allegiance !== "player" && !n.isRivalLeader && !n.hostile)
+      .sort(
+        (a, b) =>
+          Math.abs(a.zx - g.zx) + Math.abs(a.zy - g.zy) - (Math.abs(b.zx - g.zx) + Math.abs(b.zy - g.zy)),
+      )
+      .slice(0, 8);
+    if (candidates.length === 0) {
+      this.hud.toast("There is no one left to persuade.");
+      return;
+    }
+    this.state = "chooser";
+    showChooser(
+      `${shortName(follower)} should befriend whom?`,
+      candidates.map((t) => ({
+        label: `${t.name} — ${g.world.district(t.zx, t.zy).name}`,
+        value: String(t.id),
+      })),
+      (v) => {
+        this.state = "playing";
+        if (v === null) return;
+        this.hud.toast(g.sendEnvoy(follower, g.npcs[Number(v)]));
       },
     );
   }
@@ -535,6 +591,46 @@ class App {
     return rt;
   }
 
+  // An enemy strike lands on whoever is closest: the player or a follower.
+  private resolveEnemyStrike(enemy: Npc): void {
+    const g = this.game;
+    const dmg = strikeDamage(enemy.attack, 0, g.rng);
+    let victim: Npc | null = null;
+    let best = Math.hypot(enemy.lx - g.lx, enemy.ly - g.ly);
+    for (const f of g.followers) {
+      if (f.order !== "follow" || f.zx !== g.zx || f.zy !== g.zy) continue;
+      const d = Math.hypot(enemy.lx - f.lx, enemy.ly - f.ly);
+      if (d < best) {
+        best = d;
+        victim = f;
+      }
+    }
+    if (best >= ENEMY_STRIKE_RANGE * 1.4) return;
+    if (victim) {
+      g.damageNpc(victim, dmg, enemy.id);
+      const vrt = this.npcRt.get(victim.id);
+      if (vrt) vrt.hitFlash = 0.2;
+    } else if (this.iframes <= 0) {
+      g.damagePlayer(dmg);
+    }
+  }
+
+  // The hostile currently pressing the player, if any (recomputed per frame).
+  private get engagedEnemy(): Npc | null {
+    const g = this.game;
+    let best: Npc | null = null;
+    let bestD = FOLLOWER_ASSIST_RANGE;
+    for (const npc of g.npcsInZone(g.zx, g.zy)) {
+      if (!this.isHostileNow(npc)) continue;
+      const d = Math.hypot(npc.lx - g.lx, npc.ly - g.ly);
+      if (d < bestD) {
+        bestD = d;
+        best = npc;
+      }
+    }
+    return best;
+  }
+
   private updateNpcs(dt: number): void {
     const g = this.game;
     // Remove views for NPCs that died or left the visible neighborhood.
@@ -615,9 +711,7 @@ class App {
       if (rt.telegraph > 0) {
         rt.telegraph -= dt;
         if (rt.telegraph <= 0) {
-          if (distToPlayer < ENEMY_STRIKE_RANGE * 1.4 && this.iframes <= 0) {
-            g.damagePlayer(strikeDamage(npc.attack, 0, g.rng));
-          }
+          this.resolveEnemyStrike(npc);
           rt.cooldown = ENEMY_ATTACK_COOLDOWN;
         }
         return;
@@ -631,6 +725,23 @@ class App {
     }
 
     if (npc.allegiance === "player" && npc.order === "follow") {
+      // Able-bodied followers wade in when an enemy menaces their lord.
+      const enemy = this.engagedEnemy;
+      if (enemy && npc.hp / npc.maxHp > FOLLOWER_RETREAT_HP) {
+        const d = Math.hypot(enemy.lx - npc.lx, enemy.ly - npc.ly);
+        if (d > ATTACK_RANGE * 0.9) {
+          this.moveNpcToward(npc, enemy.lx, enemy.ly, NPC_LOCAL_SPEED * 1.6, dt);
+        } else {
+          rt.view.group.rotation.y = Math.atan2(enemy.lx - npc.lx, enemy.ly - npc.ly);
+          if (rt.cooldown <= 0) {
+            rt.cooldown = FOLLOWER_ATTACK_COOLDOWN;
+            g.damageNpc(enemy, strikeDamage(npc.attack, 0, g.rng), npc.id);
+            const ert = this.npcRt.get(enemy.id);
+            if (ert) ert.hitFlash = 0.2;
+          }
+        }
+        return;
+      }
       const idx = g.followers.filter((f) => f.order === "follow").indexOf(npc);
       const gap = 2.6 + Math.max(0, idx) * 1.1;
       if (distToPlayer > gap) {

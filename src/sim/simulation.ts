@@ -1,4 +1,5 @@
 import {
+  ENVOY_MAX_HOPS,
   GOSSIP_CHANCE,
   NPC_FLEE_HEALTH,
   NPC_TRAVEL_SPEED,
@@ -12,7 +13,7 @@ import { pick } from "../core/rng";
 import { decide, driftNeeds, processBehavior } from "./brain";
 import { fightOf, fightTick } from "./fights";
 import { gossip } from "./memory";
-import { advancePlan } from "./pathing";
+import { advancePlan, planRoute } from "./pathing";
 import type { Game } from "./game";
 
 // The living world: every heartbeat, off-screen NPCs wander between
@@ -59,6 +60,10 @@ export class Simulation {
         if (npc.behavior) processBehavior(game, npc);
         else if (!npc.plan) decide(game, npc);
       }
+      // Envoys run their errand: travel, attempt, walk home.
+      if (npc.mission && npc.allegiance === "player" && !fightOf(game, npc.id)) {
+        this.processEnvoy(game, npc);
+      }
       // Wounded NPCs slowly recover between encounters.
       if (npc.hp < npc.maxHp && !visible && !fightOf(game, npc.id)) {
         npc.hp = Math.min(npc.maxHp, npc.hp + 1);
@@ -67,6 +72,44 @@ export class Simulation {
     }
     fightTick(game);
     this.maybeGossip(game);
+  }
+
+  private processEnvoy(game: Game, envoy: Npc): void {
+    const mission = envoy.mission!;
+    if (envoy.plan) return; // still walking
+    if (mission.stage === "travel") {
+      const target = game.npcs[mission.targetId];
+      const gone = !target.alive || target.allegiance === "player";
+      const here =
+        !gone && target.zx === envoy.zx && target.zy === envoy.zy;
+      if (here) {
+        game.envoyAttempt(envoy, target);
+        mission.stage = "return";
+        envoy.plan = planRoute(envoy, game.zx, game.zy, game.lx, game.ly);
+      } else if (!gone && mission.hops < ENVOY_MAX_HOPS) {
+        mission.hops++;
+        envoy.plan = planRoute(envoy, target.zx, target.zy, target.lx, target.ly);
+      } else {
+        if (!gone) game.ticker(`${envoy.name} lost ${target.name}'s trail and heads back.`, "info");
+        mission.stage = "return";
+        envoy.plan = planRoute(envoy, game.zx, game.zy, game.lx, game.ly);
+      }
+      return;
+    }
+    // Returning: home is wherever the player is now.
+    if (envoy.zx === game.zx && envoy.zy === game.zy) {
+      envoy.mission = null;
+      envoy.order = "follow";
+      game.ticker(`${envoy.name} rejoins your retinue.`, "info");
+    } else if (mission.hops < ENVOY_MAX_HOPS * 2) {
+      mission.hops++;
+      envoy.plan = planRoute(envoy, game.zx, game.zy, game.lx, game.ly);
+    } else {
+      // Player is moving too much — wait in place until they come close.
+      envoy.mission = null;
+      envoy.order = "wait";
+      game.ticker(`${envoy.name} waits for you in ${game.world.district(envoy.zx, envoy.zy).name}.`, "info");
+    }
   }
 
   // Until proper chats arrive (WP3), NPCs sharing a district swap news

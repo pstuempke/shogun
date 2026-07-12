@@ -141,6 +141,19 @@ Real-time in the world (no separate arena):
 - NPCs below 25 % HP **yield**: they kneel, stop fighting, and can be
   befriended or executed. Attacking a neutral NPC turns them hostile and
   costs 30 disposition.
+- **Followers fight beside you**: retainers with order `follow` engage
+  any enemy pressing the player (within `FOLLOWER_ASSIST_RANGE`),
+  striking on their own cooldown, and retreat below
+  `FOLLOWER_RETREAT_HP`. Enemy strikes land on whoever is closest —
+  the player or a follower.
+- **Order → Attack**: sic a follower on any NPC in the district; this
+  opens a staged fight (bystanders may defend the victim) and costs
+  `ORDER_ATTACK_DISPOSITION_HIT` disposition with the target.
+- **Order → Envoy**: dispatch a follower to walk to any NPC in Japan and
+  attempt persuasion using the *envoy's* rank and a
+  `ENVOY_PERSUASION_SHARE` share of your persuasion (plus your follower
+  momentum). Success sends the recruit walking to you; either way the
+  envoy walks home. One errand per follower at a time.
 - Player at 0 HP: **normal mode** — monks ransom you back at the Temple
   (lose half your gold, half your followers desert). **Way of Honour** —
   game over.
@@ -199,7 +212,8 @@ bonus) × class multiplier.
 | Relationships, memory, gossip, ask-for-news (WP2) | [x] |
 | Utility brain: needs, traits, behaviors, chats (WP3) | [x] |
 | Staged NPC fights & bystander intervention (WP4) | [x] |
-| Unit tests (76) | [x] |
+| Follower combat assist & envoy orders (WP5) | [x] |
+| Unit tests (80) | [x] |
 
 Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
 behaviors, NPC↔NPC social life, memory/news, follower combat, recovery
