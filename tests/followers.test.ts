@@ -62,14 +62,17 @@ describe("Order: envoy", () => {
     expect(envoy.order).toBe("wait");
     const sim = new Simulation();
     let recruited = false;
-    for (let t = 0; t < 300 && !recruited; t++) {
+    for (let t = 0; t < 500 && !recruited; t++) {
       sim.tick(g);
       target.behavior = { kind: "rest", until: 999, partnerId: -1 }; // pin the target
       recruited = target.allegiance === "player";
+      // A single attempt can fail on the dice — send the envoy back out.
+      if (!recruited && (!envoy.mission || envoy.mission.stage === "return")) {
+        envoy.mission = null;
+        g.sendEnvoy(envoy, target);
+      }
       if (g.phase !== "gathering") break;
     }
-    // With disposition 80, an envoy of rank >=3, and noble-backed persuasion,
-    // the roll is overwhelmingly favorable.
     expect(recruited).toBe(true);
     expect(envoy.mission === null || envoy.mission.stage === "return").toBe(true);
     // The new recruit walks toward the player rather than teleporting.

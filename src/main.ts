@@ -367,6 +367,9 @@ class App {
     if (npc) {
       actions.push({ key: "E", label: `Examine`, onUse: () => this.hud.toast(this.game.examine(npc), 5) });
       actions.push({ key: "N", label: "Ask for news", onUse: () => this.hud.toast(this.game.askNews(npc), 7) });
+      if (npc.role === "merchant" && !npc.hostile && npc.allegiance !== "player") {
+        actions.push({ key: "R", label: "Trade", onUse: () => this.openTrade(npc) });
+      }
       if (npc.allegiance === "player") {
         actions.push({ key: "O", label: `Order ${shortName(npc)}`, onUse: () => this.openOrders(npc) });
       } else {
@@ -387,6 +390,9 @@ class App {
     }
     if (item) {
       actions.push({ key: "T", label: `Take ${item.name}`, onUse: () => this.hud.toast(this.game.takeItem(item)) });
+    }
+    if (this.game.inventory.some((i) => i.kind === "food")) {
+      actions.push({ key: "U", label: "Eat", onUse: () => this.openUseFood() });
     }
     if (!npc && this.game.inventory.length > 0) {
       actions.push({ key: "X", label: "Drop item", onUse: () => this.openDrop() });
@@ -477,6 +483,57 @@ class App {
         this.hud.toast(this.game.give(npc, item));
         this.hud.updateInventory(this.game);
       }
+    });
+  }
+
+  private openUseFood(): void {
+    const options = this.game.inventory
+      .filter((i) => i.kind === "food")
+      .map((i) => ({ label: `${i.name} (+${i.value} health)`, value: String(i.id) }));
+    if (options.length === 0) return;
+    this.state = "chooser";
+    showChooser("Eat what?", options, (v) => {
+      this.state = "playing";
+      if (v === null) return;
+      const item = this.game.items.find((i) => i.id === Number(v));
+      if (item) {
+        this.hud.toast(this.game.useFood(item));
+        this.hud.updateInventory(this.game);
+      }
+    });
+  }
+
+  private openTrade(merchant: Npc): void {
+    const g = this.game;
+    const options: { label: string; value: string }[] = [];
+    for (const offer of g.merchantStock(merchant)) {
+      options.push({
+        label: `Buy ${offer.name} — ${offer.price} koban${offer.kind === "food" ? ` (+${offer.value} health)` : ""}`,
+        value: `b:${offer.stockIndex}`,
+      });
+    }
+    for (const item of g.inventory.filter((i) => i.kind !== "sacred")) {
+      options.push({
+        label: `Sell ${item.name} — +${Math.max(1, Math.floor(item.value / 2))} koban`,
+        value: `s:${item.id}`,
+      });
+    }
+    if (options.length === 0) {
+      this.hud.toast(`${merchant.name} has sold out for today.`);
+      return;
+    }
+    this.state = "chooser";
+    showChooser(`Trade with ${merchant.name}`, options, (v) => {
+      this.state = "playing";
+      if (v === null) return;
+      if (v.startsWith("b:")) {
+        const offer = g.merchantStock(merchant).find((o) => o.stockIndex === Number(v.slice(2)));
+        if (offer) this.hud.toast(g.buyOffer(merchant, offer));
+      } else {
+        const item = g.items.find((i) => i.id === Number(v.slice(2)));
+        if (item) this.hud.toast(g.sellToMerchant(item));
+      }
+      this.hud.updateInventory(this.game);
     });
   }
 
@@ -874,6 +931,7 @@ class App {
     if (this.state === "playing") {
       this.game.elapsed += dt;
       this.sim.update(this.game, dt);
+      this.game.regen(dt);
       this.updatePlayer(dt);
       this.updateNpcs(dt);
       this.updateItems(t);

@@ -38,6 +38,18 @@ export function makeItemView(item: Item): THREE.Group {
       g.add(blade, hilt);
       break;
     }
+    case "food": {
+      const leaf = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.06, 8), mat(0x5c8a3a));
+      leaf.position.y = 0.04;
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), mat(0xf2efe4));
+      ball.scale.y = 0.85;
+      ball.position.y = 0.28;
+      ball.castShadow = true;
+      const nori = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.08), mat(0x2b3a2b));
+      nori.position.set(0, 0.24, 0.22);
+      g.add(leaf, ball, nori);
+      break;
+    }
     case "sacred": {
       const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.65, 0.4, 8), mat(PAL.stone));
       pedestal.position.y = 0.2;

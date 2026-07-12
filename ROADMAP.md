@@ -253,7 +253,7 @@ single commit/PR.
 - **Tests**: envoy mission state machine (pure sim), assist targeting,
   retreat trigger.
 
-### WP6 — Recovery & trade
+### WP6 — Recovery & trade ✅ DONE
 - Constants + `ItemKind "food"`, `U — Use` action, passive regen with
   combat delay, rest auras (temple/well proximity check in sim,
   glow decal in render), merchant `R — Trade` chooser with daily

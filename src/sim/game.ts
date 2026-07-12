@@ -6,7 +6,14 @@ import {
   NEWS_MEMORIES_SHOWN,
   ORDER_ATTACK_DISPOSITION_HIT,
   NEWS_MIN_DISPOSITION,
+  PLAYER_REGEN_HP_PER_S,
+  REGEN_COMBAT_DELAY,
+  REST_AURA_MULT,
+  REST_AURA_RANGE,
   SAFETY_WITNESS_SPIKE,
+  TRADE_GREED_SPREAD,
+  TRADE_SELL_FRACTION,
+  TRADE_STOCK_SIZE,
   TREASURE_WITNESSES,
   KOBAN_PICKUP_MIN,
   PALACE_ZX,
@@ -70,6 +77,22 @@ const WEAPON_NAMES: [string, number][] = [
   ["Naginata", 10],
 ];
 
+// name, hp restored, base price at a merchant
+const FOOD_CATALOG: [string, number, number][] = [
+  ["Rice Ball", 25, 14],
+  ["Miso Soup", 40, 24],
+  ["Grilled Eel", 55, 36],
+  ["Herbal Remedy", 75, 52],
+];
+
+export interface TradeOffer {
+  name: string;
+  kind: "food" | "gift";
+  value: number;
+  price: number;
+  stockIndex: number;
+}
+
 export class Game {
   readonly bus = new Bus();
   readonly world: World;
@@ -99,6 +122,9 @@ export class Game {
   emperorMet = false;
   score = 0;
   defeatCount = 0;
+  nextItemId = 0;
+  lastCombatAt = -Infinity; // game seconds of the last blow given or taken
+  private soldStock = new Set<string>(); // `${merchantId}:${day}:${stockIndex}`
 
   constructor(classId: string, honorMode = false, seed: number = WORLD_SEED) {
     this.playerClass = getClass(classId);
@@ -189,6 +215,8 @@ export class Game {
     }
     for (const [name, value] of GIFT_NAMES) place("gift", name, value);
     for (const [name, value] of WEAPON_NAMES) place("weapon", name, value);
+    for (const [name, value] of FOOD_CATALOG.slice(0, 3)) place("food", name, value);
+    this.nextItemId = this.items.reduce((m, i) => Math.max(m, i.id), 0) + 1;
   }
 
   // The Emperor's quest: the four treasures appear only in phase 2. Nobody
@@ -196,11 +224,10 @@ export class Game {
   // witness its arrival, and the news spreads by gossip. Ask around.
   private placeSacredItems(): void {
     const districts = sacredItemDistricts(this.rng);
-    let id = this.items.reduce((m, i) => Math.max(m, i.id), 0) + 1;
     districts.forEach((z, idx) => {
       const p = this.world.randomWalkableTile(z.zx, z.zy, this.rng);
       this.items.push({
-        id: id++,
+        id: this.nextItemId++,
         kind: "sacred",
         name: SACRED_NAMES[idx],
         value: 0,
@@ -483,6 +510,7 @@ export class Game {
   // ---- combat outcomes (real-time loop applies damage; this handles state) ----
 
   damageNpc(npc: Npc, dmg: number, killerId: number = PLAYER_ID): "dead" | "yielded" | "fighting" {
+    if (killerId === PLAYER_ID) this.lastCombatAt = this.elapsed;
     npc.hp -= dmg;
     if (npc.hp <= 0) {
       this.npcDeath(killerId, npc);
@@ -514,6 +542,7 @@ export class Game {
   }
 
   damagePlayer(dmg: number): void {
+    this.lastCombatAt = this.elapsed;
     this.hp = Math.max(0, this.hp - dmg);
     this.bus.emit("hpChange", { hp: this.hp, maxHp: this.maxHp });
     if (this.hp <= 0) this.onPlayerDefeated();
@@ -551,6 +580,95 @@ export class Game {
       `Monks drag you from the field. Ransom: ${goldLost} koban${toLose > 0 ? ` and ${toLose} follower(s) desert` : ""}.`,
       "bad",
     );
+  }
+
+  // ---- recovery & trade ----
+
+  // Standing near a temple pagoda or village well restores health faster.
+  inRestAura(): boolean {
+    const d = this.world.district(this.zx, this.zy);
+    for (const p of d.props) {
+      if (p.kind !== "pagoda" && p.kind !== "well") continue;
+      const px = (p.tx + 0.5) * TILE;
+      const py = (p.ty + 0.5) * TILE;
+      if (Math.hypot(px - this.lx, py - this.ly) <= REST_AURA_RANGE) return true;
+    }
+    return false;
+  }
+
+  // Passive out-of-combat regeneration; call once per frame.
+  regen(dt: number): void {
+    if (this.hp >= this.maxHp || this.hp <= 0) return;
+    if (this.elapsed - this.lastCombatAt < REGEN_COMBAT_DELAY) return;
+    const rate = PLAYER_REGEN_HP_PER_S * (this.inRestAura() ? REST_AURA_MULT : 1);
+    this.hp = Math.min(this.maxHp, this.hp + rate * dt);
+    this.bus.emit("hpChange", { hp: this.hp, maxHp: this.maxHp });
+  }
+
+  useFood(item: Item): string {
+    if (item.heldBy !== "player" || item.kind !== "food") return "You cannot eat that.";
+    item.heldBy = "npc"; // consumed
+    const healed = Math.min(this.maxHp - this.hp, item.value);
+    this.hp = Math.min(this.maxHp, this.hp + item.value);
+    this.bus.emit("hpChange", { hp: this.hp, maxHp: this.maxHp });
+    this.bus.emit("itemTaken", { id: item.id });
+    return `You eat the ${item.name}. (+${Math.round(healed)} health)`;
+  }
+
+  // A merchant's wares for today: seeded by merchant and day, priced by greed.
+  merchantStock(merchant: Npc): TradeOffer[] {
+    if (merchant.role !== "merchant") return [];
+    const rng = mulberry32(merchant.id * 7919 + this.day * 104729 + 1);
+    const offers: TradeOffer[] = [];
+    for (let i = 0; i < TRADE_STOCK_SIZE; i++) {
+      if (this.soldStock.has(`${merchant.id}:${this.day}:${i}`)) continue;
+      const priceMult = 0.8 + merchant.traits.greedy * TRADE_GREED_SPREAD;
+      if (rng() < 0.7) {
+        const [name, value, base] = FOOD_CATALOG[Math.floor(rng() * FOOD_CATALOG.length)];
+        offers.push({ name, kind: "food", value, price: Math.round(base * priceMult), stockIndex: i });
+      } else {
+        const [name, value] = GIFT_NAMES[Math.floor(rng() * GIFT_NAMES.length)];
+        offers.push({ name, kind: "gift", value, price: Math.round(value * 1.2 * priceMult), stockIndex: i });
+      }
+    }
+    return offers;
+  }
+
+  buyOffer(merchant: Npc, offer: TradeOffer): string {
+    if (this.gold < offer.price) return `You cannot afford the ${offer.name} (${offer.price} koban).`;
+    this.gold -= offer.price;
+    this.soldStock.add(`${merchant.id}:${this.day}:${offer.stockIndex}`);
+    this.items.push({
+      id: this.nextItemId++,
+      kind: offer.kind,
+      name: offer.name,
+      value: offer.value,
+      zx: this.zx,
+      zy: this.zy,
+      lx: this.lx,
+      ly: this.ly,
+      heldBy: "player",
+      sacredIndex: -1,
+    });
+    this.bus.emit("goldChange", { gold: this.gold });
+    return `Bought ${offer.name} for ${offer.price} koban.`;
+  }
+
+  sellToMerchant(item: Item): string {
+    if (item.heldBy !== "player") return "You do not carry that.";
+    if (item.kind === "sacred") return "You cannot sell an Imperial treasure.";
+    const payout = Math.max(1, Math.floor(item.value * TRADE_SELL_FRACTION));
+    item.heldBy = "npc";
+    this.gold += payout;
+    if (item.kind === "weapon") {
+      this.weaponBonus = Math.max(
+        0,
+        ...this.inventory.filter((i) => i.kind === "weapon").map((i) => i.value),
+      );
+    }
+    this.bus.emit("goldChange", { gold: this.gold });
+    this.bus.emit("itemTaken", { id: item.id });
+    return `Sold ${item.name} for ${payout} koban.`;
   }
 
   // ---- quest flow ----

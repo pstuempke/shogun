@@ -119,6 +119,17 @@ export const ENVOY_PERSUASION_SHARE = 0.8; // of the player's persuasion an envo
 export const ENVOY_MAX_HOPS = 3; // re-plans chasing a moving target before giving up
 export const ORDER_ATTACK_DISPOSITION_HIT = 40; // being jumped by your goons is not endearing
 
+// ---- Health recovery ----
+export const PLAYER_REGEN_HP_PER_S = 1.5; // out-of-combat passive regen
+export const REGEN_COMBAT_DELAY = 6; // seconds after combat before regen starts
+export const REST_AURA_RANGE = 7; // world units from a pagoda/well
+export const REST_AURA_MULT = 3; // regen multiplier inside an aura
+
+// ---- Trade ----
+export const TRADE_STOCK_SIZE = 3; // wares a merchant offers per day
+export const TRADE_SELL_FRACTION = 0.5; // merchants buy your goods at half value
+export const TRADE_GREED_SPREAD = 0.6; // price = base * (0.8 + greedy * this)
+
 // ---- Economy ----
 export const KOBAN_PICKUP_MIN = 15;
 export const KOBAN_PICKUP_MAX = 60;

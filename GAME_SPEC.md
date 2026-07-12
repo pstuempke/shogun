@@ -167,8 +167,23 @@ Real-time in the world (no separate arena):
   scattered in the world and auto-collected on Take.
 - **Gifts** (8 kinds, value 18–40): raise disposition when given.
 - **Weapons** (4 kinds, +3…+10): best carried weapon adds to attack;
-  dropping it recomputes the bonus.
-- **Sacred treasures** (4, phase 2 only): quest items; cannot be given away.
+  dropping or selling it recomputes the bonus.
+- **Food** (Rice Ball…Herbal Remedy, +25…+75 HP): eaten from the satchel
+  via `U — Eat`; found in the world or bought from merchants.
+- **Sacred treasures** (4, phase 2 only): quest items; cannot be given
+  away or sold.
+- **Trade** (`R` near a merchant): each merchant offers
+  `TRADE_STOCK_SIZE` wares per day (seeded by merchant + day, priced by
+  their `greedy` trait; stock depletes when bought, restocks daily), and
+  buys the player's goods at `TRADE_SELL_FRACTION` of value.
+
+### Health recovery
+
+- **Passive regen**: `PLAYER_REGEN_HP_PER_S` once the player has been out
+  of combat for `REGEN_COMBAT_DELAY` seconds.
+- **Rest auras**: standing within `REST_AURA_RANGE` of a temple pagoda or
+  village well multiplies regen by `REST_AURA_MULT`.
+- **Food**: instant healing from the satchel.
 
 ## 8. Two-Phase Win Condition
 
@@ -213,7 +228,8 @@ bonus) × class multiplier.
 | Utility brain: needs, traits, behaviors, chats (WP3) | [x] |
 | Staged NPC fights & bystander intervention (WP4) | [x] |
 | Follower combat assist & envoy orders (WP5) | [x] |
-| Unit tests (80) | [x] |
+| Health recovery & merchant trade (WP6) | [x] |
+| Unit tests (90) | [x] |
 
 Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
 behaviors, NPC↔NPC social life, memory/news, follower combat, recovery

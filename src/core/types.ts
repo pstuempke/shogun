@@ -129,7 +129,7 @@ export interface Npc {
   mission: EnvoyMission | null; // active envoy errand (followers only)
 }
 
-export type ItemKind = "koban" | "gift" | "weapon" | "sacred";
+export type ItemKind = "koban" | "gift" | "weapon" | "sacred" | "food";
 
 export interface Item {
   id: number;
