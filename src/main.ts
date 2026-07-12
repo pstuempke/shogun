@@ -29,6 +29,7 @@ import type { Item, Npc } from "./core/types";
 import { Game } from "./sim/game";
 import { Simulation } from "./sim/simulation";
 import { strikeDamage } from "./sim/combat";
+import { fightOf } from "./sim/fights";
 import { normalizeZone, worldX, worldY } from "./sim/pathing";
 import { IsoScene } from "./render/scene";
 import { buildDistrictGroup } from "./render/zoneView";
@@ -569,6 +570,7 @@ class App {
       }
       const color = allegianceColor(npc);
       if (npc.hp !== rt.lastHp || color !== rt.lastColor) {
+        if (npc.hp < rt.lastHp) rt.hitFlash = 0.25;
         drawLabel(rt.view.labelCanvas, npc.name, color, npc.hp / npc.maxHp);
         rt.lastHp = npc.hp;
         rt.lastColor = color;
@@ -582,6 +584,32 @@ class App {
     const distToPlayer = Math.hypot(npc.lx - g.lx, npc.ly - g.ly);
 
     if (npc.yielded) return;
+
+    // Brawling NPCs square up against their nearest opponent; the sim
+    // resolves the blows, the renderer shows the scrum.
+    const fight = fightOf(g, npc.id);
+    if (fight) {
+      const foeIds = fight.sideA.includes(npc.id) ? fight.sideB : fight.sideA;
+      let foe: Npc | null = null;
+      let foeDist = Infinity;
+      for (const id of foeIds) {
+        const other = g.npcs[id];
+        if (!other.alive || other.yielded) continue;
+        const d = Math.hypot(other.lx - npc.lx, other.ly - npc.ly);
+        if (d < foeDist) {
+          foeDist = d;
+          foe = other;
+        }
+      }
+      if (foe) {
+        if (foeDist > 2.0) {
+          this.moveNpcToward(npc, foe.lx, foe.ly, NPC_LOCAL_SPEED * 1.4, dt);
+        } else {
+          rt.view.group.rotation.y = Math.atan2(foe.lx - npc.lx, foe.ly - npc.ly);
+        }
+      }
+      return;
+    }
 
     if (this.isHostileNow(npc)) {
       if (rt.telegraph > 0) {

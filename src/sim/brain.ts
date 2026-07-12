@@ -1,8 +1,10 @@
 import {
+  AGGRESS_PATIENCE,
   CHAT_AFFINITY_GAIN,
   CHAT_COOLDOWN_TICKS,
   CHAT_RANGE,
   CHAT_TICKS,
+  FIGHT_START_RANGE,
   FLEE_SAFETY_THRESHOLD,
   IDLE_SCORE,
   NEED_PURPOSE_RATE,
@@ -26,6 +28,7 @@ import type { BehaviorKind, Biome, Needs, Npc, Traits } from "../core/types";
 import { pick } from "../core/rng";
 import { getAffinity, shiftAffinity } from "./social";
 import { gossip } from "./memory";
+import { startFight } from "./fights";
 import { planRoute, worldX, worldY } from "./pathing";
 import type { Game } from "./game";
 
@@ -53,7 +56,11 @@ export function driftNeeds(needs: Needs, traits: Traits): void {
 }
 
 // Pure scoring: what does this NPC most want to do right now?
-export function scoreBehaviors(npc: Npc, partnerAvailable: boolean): ScoredBehavior[] {
+export function scoreBehaviors(
+  npc: Npc,
+  partnerAvailable: boolean,
+  victimAvailable = false,
+): ScoredBehavior[] {
   const n = npc.needs;
   const wounded = npc.hp / npc.maxHp < 0.5;
   const scores: ScoredBehavior[] = [
@@ -62,6 +69,10 @@ export function scoreBehaviors(npc: Npc, partnerAvailable: boolean): ScoredBehav
     { kind: "work", score: n.purpose },
     { kind: "socialize", score: partnerAvailable ? n.social * (0.5 + npc.traits.gregarious) : 0 },
   ];
+  const predator = npc.role === "bandit" || npc.hostile;
+  if (predator && victimAvailable && !wounded) {
+    scores.push({ kind: "aggress", score: n.purpose * (0.5 + npc.traits.greedy) });
+  }
   if (n.safety >= FLEE_SAFETY_THRESHOLD) {
     scores.push({ kind: "flee", score: n.safety * (1.5 - npc.traits.brave) });
   }
@@ -86,6 +97,25 @@ function findChatPartner(game: Game, npc: Npc): Npc | null {
     const dist = Math.abs(other.zx - npc.zx) + Math.abs(other.zy - npc.zy);
     if (dist > SOCIAL_SEARCH_DISTRICTS) continue;
     if (getAffinity(game.affinities, npc.id, other.id) < SOCIAL_MIN_AFFINITY) continue;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = other;
+    }
+  }
+  return best;
+}
+
+// Prey for a stalking predator: the nearest non-predator within reach.
+function findVictim(game: Game, npc: Npc): Npc | null {
+  let best: Npc | null = null;
+  let bestDist = Infinity;
+  for (const other of game.npcs) {
+    if (other === npc || !other.alive || other.yielded) continue;
+    if (other.role === "bandit" || other.hostile) continue;
+    if (other.isRivalLeader) continue;
+    if (npc.allegiance !== "none" && other.allegiance === npc.allegiance) continue;
+    const dist = Math.abs(other.zx - npc.zx) + Math.abs(other.zy - npc.zy);
+    if (dist > SOCIAL_SEARCH_DISTRICTS) continue;
     if (dist < bestDist) {
       bestDist = dist;
       best = other;
@@ -135,7 +165,9 @@ function walkTo(game: Game, npc: Npc, zx: number, zy: number): void {
 // Choose and initiate the next behavior for an idle NPC.
 export function decide(game: Game, npc: Npc): void {
   const partner = findChatPartner(game, npc);
-  const ranked = scoreBehaviors(npc, partner !== null);
+  const predator = npc.role === "bandit" || npc.hostile;
+  const victim = predator ? findVictim(game, npc) : null;
+  const ranked = scoreBehaviors(npc, partner !== null, victim !== null);
   // Soft pick: usually the top choice, sometimes the runner-up.
   const chosen = ranked.length > 1 && game.rng() < 0.25 ? ranked[1] : ranked[0];
   switch (chosen.kind) {
@@ -157,6 +189,9 @@ export function decide(game: Game, npc: Npc): void {
     }
     case "socialize":
       npc.behavior = { kind: "socialize", until: SOCIALIZE_PATIENCE, partnerId: partner!.id };
+      break;
+    case "aggress":
+      npc.behavior = { kind: "aggress", until: AGGRESS_PATIENCE, partnerId: victim!.id };
       break;
     case "work": {
       const biome = WORK_BIOME[npc.role];
@@ -219,6 +254,25 @@ export function processBehavior(game: Game, npc: Npc): void {
       b.until--;
       if (b.until <= 0 || !walking) npc.behavior = null;
       return;
+    case "aggress": {
+      const prey = game.npcs[b.partnerId];
+      b.until--;
+      const gone =
+        !prey.alive ||
+        prey.yielded ||
+        Math.abs(prey.zx - npc.zx) + Math.abs(prey.zy - npc.zy) > SOCIAL_SEARCH_DISTRICTS;
+      if (b.until <= 0 || gone) {
+        npc.behavior = null;
+        return;
+      }
+      const dist = Math.hypot(worldX(prey) - worldX(npc), worldY(prey) - worldY(npc));
+      if (dist <= FIGHT_START_RANGE) {
+        startFight(game, npc, prey);
+      } else if (!walking) {
+        npc.plan = planRoute(npc, prey.zx, prey.zy, prey.lx, prey.ly);
+      }
+      return;
+    }
     case "socialize": {
       const partner = game.npcs[b.partnerId];
       b.until--;

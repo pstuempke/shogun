@@ -29,10 +29,19 @@ export const GAME_DAY_SECONDS = 120; // real seconds per in-game day
 export const NAMED_NPC_COUNT = 30;
 export const SIM_TICK_SECONDS = 2.0; // global AI heartbeat
 export const NPC_TRAVEL_SPEED = 4.5; // world units / s while walking a travel plan
+
+// ---- NPC-vs-NPC fights ----
+export const FIGHT_START_RANGE = 3; // world units for an aggressor to strike first blood
+export const AGGRESS_PATIENCE = 20; // ticks a stalker pursues before giving up
+export const FIGHT_DAMAGE_SCALE = 0.6; // per-tick blows are softer than duel strikes
+export const FIGHT_DEATH_CHANCE = 0.12; // chance a bandit finishes a yielded victim
+export const FIGHT_MAX_TICKS = 30; // stalemates disband
+export const FIGHT_AFFINITY_HIT = 30; // starting a fight sours the pair
+export const FIGHT_YIELD_AFFINITY_HIT = 20; // being beaten sours it further
+export const INTERVENE_THRESHOLD = 40; // bravery+loyalty score needed to join a fight
 export const WANDER_RADIUS = 2; // max district distance for a wander destination
 export const PLAN_TIMEOUT_TICKS = 60; // abandon a travel plan after this many sim ticks
 export const GATE_INSET_TILES = 1.5; // gate waypoints sit this far inside each district
-export const NPC_FIGHT_CHANCE = 0.035; // per tick, two hostile-aligned NPCs in same district
 export const NPC_FLEE_HEALTH = 0.35;
 export const RIVAL_RECRUIT_SECONDS = 40; // Ishido recruits one NPC this often
 export const RIVAL_MAX_FOLLOWERS = 12;
@@ -101,7 +110,6 @@ export const ENEMY_TELEGRAPH = 0.5; // windup before an enemy strike lands
 export const ENEMY_STRIKE_RANGE = 2.2;
 export const ENEMY_ATTACK_COOLDOWN = 1.4;
 export const YIELD_THRESHOLD = 0.25; // NPC yields (can be spared) below this HP fraction
-export const OFFSCREEN_FIGHT_SWING = 20; // damage variance in simulated fights
 
 // ---- Economy ----
 export const KOBAN_PICKUP_MIN = 15;

@@ -1,6 +1,5 @@
 import {
   GOSSIP_CHANCE,
-  NPC_FIGHT_CHANCE,
   NPC_FLEE_HEALTH,
   NPC_TRAVEL_SPEED,
   RIVAL_MAX_FOLLOWERS,
@@ -11,7 +10,7 @@ import {
 import type { Npc } from "../core/types";
 import { pick } from "../core/rng";
 import { decide, driftNeeds, processBehavior } from "./brain";
-import { resolveOffscreenFight } from "./combat";
+import { fightOf, fightTick } from "./fights";
 import { gossip } from "./memory";
 import { advancePlan } from "./pathing";
 import type { Game } from "./game";
@@ -53,19 +52,20 @@ export class Simulation {
           advancePlan(npc, NPC_TRAVEL_SPEED * SIM_TICK_SECONDS);
         }
       }
-      // The utility brain drives everyone who isn't sworn to the player.
-      if (npc.allegiance !== "player" && !npc.yielded) {
+      // The utility brain drives everyone who isn't sworn to the player
+      // and isn't currently in a brawl (the fight system owns those).
+      if (npc.allegiance !== "player" && !npc.yielded && !fightOf(game, npc.id)) {
         driftNeeds(npc.needs, npc.traits);
         if (npc.behavior) processBehavior(game, npc);
         else if (!npc.plan) decide(game, npc);
       }
       // Wounded NPCs slowly recover between encounters.
-      if (npc.hp < npc.maxHp && !visible) {
+      if (npc.hp < npc.maxHp && !visible && !fightOf(game, npc.id)) {
         npc.hp = Math.min(npc.maxHp, npc.hp + 1);
         if (npc.yielded && npc.hp / npc.maxHp > NPC_FLEE_HEALTH) npc.yielded = false;
       }
     }
-    this.maybeFight(game);
+    fightTick(game);
     this.maybeGossip(game);
   }
 
@@ -90,52 +90,6 @@ export class Simulation {
       zone.filter((n) => n !== a),
     );
     gossip(a, b);
-  }
-
-  private maybeFight(game: Game): void {
-    if (game.rng() >= NPC_FIGHT_CHANCE * 10) return;
-    // Find a district (away from the player) holding two NPCs with a grudge.
-    const byZone = new Map<string, Npc[]>();
-    for (const npc of game.npcs) {
-      if (!npc.alive || npc.yielded) continue;
-      if (npc.zx === game.zx && npc.zy === game.zy) continue;
-      const key = `${npc.zx},${npc.zy}`;
-      const arr = byZone.get(key) ?? [];
-      arr.push(npc);
-      byZone.set(key, arr);
-    }
-    const contested = [...byZone.values()].filter(
-      (arr) =>
-        arr.length >= 2 &&
-        arr.some((n) => n.hostile || n.allegiance === "rival") &&
-        arr.some((n) => !(n.hostile || n.allegiance === "rival")),
-    );
-    if (contested.length === 0) return;
-    const zone = pick(game.rng, contested);
-    const aggressor = pick(
-      game.rng,
-      zone.filter((n) => n.hostile || n.allegiance === "rival"),
-    );
-    const victim = pick(
-      game.rng,
-      zone.filter((n) => n !== aggressor && !(n.hostile || n.allegiance === "rival")),
-    );
-    const result = resolveOffscreenFight(aggressor, victim, game.rng);
-    // Bystanders remember what they saw; the player only hears about deaths.
-    game.witness(
-      result.loserDied ? "death" : "fight",
-      aggressor.id,
-      victim.id,
-      aggressor.zx,
-      aggressor.zy,
-    );
-    if (result.loserDied) {
-      game.ticker(`${result.winner.name} has slain ${result.loser.name}!`, "bad");
-      game.bus.emit("npcDied", { id: result.loser.id });
-      if (result.loser.allegiance === "player") {
-        game.bus.emit("followerChange", { count: game.followerCount });
-      }
-    }
   }
 
   private rivalRecruit(game: Game): void {

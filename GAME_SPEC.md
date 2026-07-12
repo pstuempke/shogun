@@ -51,10 +51,21 @@ its four notorious flaws:
   time out after `PLAN_TIMEOUT_TICKS` if stuck.
 - **In-game clock**: `GAME_DAY_SECONDS` real seconds = 1 day, shown in
   the HUD ("Day N").
+- **Staged fights**: predators (bandits, hostile NPCs) with high purpose
+  stalk (`aggress`) the nearest civilian and start a **fight entity**
+  resolved over sim ticks — each round both sides trade softened blows
+  (`FIGHT_DAMAGE_SCALE`) until one side yields (`YIELD_THRESHOLD`).
+  Bandits/rivals sometimes finish a yielded victim (`FIGHT_DEATH_CHANCE`);
+  stalemates disband after `FIGHT_MAX_TICKS`. Fights the player can see
+  are rendered live (combatants square up, blows flash); fights involving
+  a follower are always reported on the ticker.
+- **Intervention**: when a fight starts, each bystander in the district
+  scores `brave×50 + affinity(victim)/2 − affinity(aggressor)/2`; those
+  above `INTERVENE_THRESHOLD` join the defenders — a samurai who sees a
+  bandit attack a peasant steps in. The timid get spiked `safety` and
+  flee instead.
 - A global heartbeat (every `SIM_TICK_SECONDS`) also heals wounded
-  off-screen NPCs and drives brawls (hostile/rival NPCs attack civilians;
-  losers are wounded or occasionally die). Routine travel is **not**
-  reported on the ticker.
+  off-screen NPCs. Routine travel is **not** reported on the ticker.
 - **Lord Ishido** is the rival leader: every `RIVAL_RECRUIT_SECONDS` he
   recruits an unaffiliated NPC to his banner (cap: `RIVAL_MAX_FOLLOWERS`).
   Rival-aligned NPCs take a persuasion penalty to poach back.
@@ -187,7 +198,8 @@ bonus) × class multiplier.
 | Walking NPC travel + in-game clock (WP1) | [x] |
 | Relationships, memory, gossip, ask-for-news (WP2) | [x] |
 | Utility brain: needs, traits, behaviors, chats (WP3) | [x] |
-| Unit tests (68) | [x] |
+| Staged NPC fights & bystander intervention (WP4) | [x] |
+| Unit tests (76) | [x] |
 
 Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
 behaviors, NPC↔NPC social life, memory/news, follower combat, recovery

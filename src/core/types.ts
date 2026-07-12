@@ -61,7 +61,18 @@ export interface Needs {
   safety: number; // spiked by witnessed violence, decays
 }
 
-export type BehaviorKind = "idle" | "work" | "rest" | "socialize" | "chat" | "flee";
+export type BehaviorKind = "idle" | "work" | "rest" | "socialize" | "chat" | "flee" | "aggress";
+
+// A skirmish between NPCs, resolved over sim ticks so the player can
+// stumble onto one mid-fight and watch (or join).
+export interface Fight {
+  id: number;
+  sideA: number[]; // aggressors
+  sideB: number[]; // defenders (interveners join here)
+  zx: number;
+  zy: number;
+  ticks: number;
+}
 
 export interface NpcBehavior {
   kind: BehaviorKind;

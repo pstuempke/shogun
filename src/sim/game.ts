@@ -23,6 +23,7 @@ import {
 import { Bus } from "../core/bus";
 import {
   PLAYER_ID,
+  type Fight,
   type FollowerOrder,
   type GamePhase,
   type Item,
@@ -76,6 +77,8 @@ export class Game {
   items: Item[] = [];
   affinities: AffinityMap = new Map();
   knownTreasures = new Set<number>(); // sacredIndexes the player has heard about
+  fights: Fight[] = [];
+  nextFightId = 0;
   phase: GamePhase = "gathering";
   elapsed = 0;
 
@@ -429,15 +432,7 @@ export class Game {
   damageNpc(npc: Npc, dmg: number): "dead" | "yielded" | "fighting" {
     npc.hp -= dmg;
     if (npc.hp <= 0) {
-      npc.hp = 0;
-      npc.alive = false;
-      if (npc.allegiance === "player") {
-        this.bus.emit("followerChange", { count: this.followerCount });
-      }
-      this.bus.emit("npcDied", { id: npc.id });
-      this.ticker(`${npc.name} has been slain.`, "bad");
-      this.witness("death", PLAYER_ID, npc.id, npc.zx, npc.zy);
-      this.checkPoolViability();
+      this.npcDeath(PLAYER_ID, npc);
       return "dead";
     }
     if (npcShouldYield(npc)) {
@@ -446,6 +441,23 @@ export class Game {
       return "yielded";
     }
     return "fighting";
+  }
+
+  // Shared death path for player kills and NPC-vs-NPC fights.
+  npcDeath(killerId: number, npc: Npc): void {
+    npc.hp = 0;
+    npc.alive = false;
+    if (npc.allegiance === "player") {
+      this.bus.emit("followerChange", { count: this.followerCount });
+    }
+    this.bus.emit("npcDied", { id: npc.id });
+    const killer = killerId === PLAYER_ID ? null : this.npcs[killerId];
+    this.ticker(
+      killer ? `${killer.name} has slain ${npc.name}!` : `${npc.name} has been slain.`,
+      "bad",
+    );
+    this.witness("death", killerId, npc.id, npc.zx, npc.zy);
+    this.checkPoolViability();
   }
 
   damagePlayer(dmg: number): void {

@@ -233,7 +233,7 @@ single commit/PR.
 - **Tests**: need satisfaction loops, role→work destination mapping,
   chat affinity gain + cooldown, deterministic behavior sequence per seed.
 
-### WP4 — Staged NPC fights & intervention
+### WP4 — Staged NPC fights & intervention ✅ DONE
 - `src/sim/fights.ts` (new): fight entity list on `Game`, per-tick
   exchange, yield/flee/death resolution, intervention rolls, witness
   memories; delete `resolveOffscreenFight` one-shot path.
