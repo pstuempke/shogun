@@ -7,7 +7,9 @@
 source of truth for all game behavior — implement from the spec, don't
 invent behavior. If a spec section is ambiguous, add a `SPEC_QUESTION:`
 entry at the bottom of `GAME_SPEC.md` and implement the most conservative
-interpretation.
+interpretation. Planned-but-unbuilt work lives in `ROADMAP.md` as ordered
+work packages (WP1–WP7); pick up the lowest unfinished WP, and update
+`GAME_SPEC.md` in the same commit as the behavior you implement.
 
 ## Commands
 

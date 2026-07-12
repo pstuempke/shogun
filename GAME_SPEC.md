@@ -149,4 +149,8 @@ bonus) × class multiplier.
 | Title / pause / end screens | [x] |
 | Unit tests (36) | [x] |
 
+Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
+behaviors, NPC↔NPC social life, memory/news, follower combat, recovery
+& trade) is specified in `ROADMAP.md`.
+
 `SPEC_QUESTION:` entries go below this line when a section is ambiguous.
