@@ -1,4 +1,8 @@
 import {
+  AFFINITY_BANDIT_PENALTY,
+  AFFINITY_MONK_BONUS,
+  AFFINITY_NOISE,
+  AFFINITY_SAME_ROLE,
   BEFRIEND_BASE_DIFFICULTY,
   BRIBE_BASE_COST,
   BRIBE_DISPOSITION_FLOOR,
@@ -14,6 +18,46 @@ import {
   RIVAL_ALIGNED_PENALTY,
 } from "../core/constants";
 import type { Npc } from "../core/types";
+import type { Rng } from "../core/rng";
+
+// ---- NPC <-> NPC relationships ----
+// Symmetric affinity (-100..100) per pair, keyed by the smaller id first.
+
+export type AffinityMap = Map<number, number>;
+
+function pairKey(a: number, b: number): number {
+  return a < b ? a * 64 + b : b * 64 + a;
+}
+
+export function seedAffinities(npcs: Npc[], rng: Rng): AffinityMap {
+  const map: AffinityMap = new Map();
+  for (let i = 0; i < npcs.length; i++) {
+    for (let j = i + 1; j < npcs.length; j++) {
+      const a = npcs[i];
+      const b = npcs[j];
+      let v = (rng() * 2 - 1) * AFFINITY_NOISE;
+      if (a.role === b.role) v += AFFINITY_SAME_ROLE;
+      if (a.role === "monk" || b.role === "monk") v += AFFINITY_MONK_BONUS;
+      if (a.role !== b.role && (a.role === "bandit" || b.role === "bandit")) {
+        v += AFFINITY_BANDIT_PENALTY;
+      }
+      map.set(pairKey(a.id, b.id), Math.round(clampAffinity(v)));
+    }
+  }
+  return map;
+}
+
+function clampAffinity(v: number): number {
+  return Math.max(-100, Math.min(100, v));
+}
+
+export function getAffinity(map: AffinityMap, a: number, b: number): number {
+  return map.get(pairKey(a, b)) ?? 0;
+}
+
+export function shiftAffinity(map: AffinityMap, a: number, b: number, delta: number): void {
+  map.set(pairKey(a, b), clampAffinity(getAffinity(map, a, b) + delta));
+}
 
 export interface Persuader {
   persuasion: number;

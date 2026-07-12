@@ -37,8 +37,21 @@ export const NPC_FIGHT_CHANCE = 0.035; // per tick, two hostile-aligned NPCs in 
 export const NPC_FLEE_HEALTH = 0.35;
 export const RIVAL_RECRUIT_SECONDS = 40; // Ishido recruits one NPC this often
 export const RIVAL_MAX_FOLLOWERS = 12;
+export const RIVAL_TICKER_MILESTONE = 3; // ticker reports every Nth rival recruit
 export const TICKER_MAX_LINES = 5;
-export const RUMOR_SECONDS = 25; // ticker hint cadence in phase 2
+
+// ---- Memory & news ----
+export const MEMORY_CAPACITY = 8; // ring buffer per NPC; treasure memories evict last
+export const NEWS_MEMORIES_SHOWN = 3; // freshest memories narrated per ask
+export const NEWS_MIN_DISPOSITION = -20; // colder NPCs refuse to talk
+export const GOSSIP_CHANCE = 0.35; // per tick: two NPCs sharing a district swap news
+export const TREASURE_WITNESSES = 3; // NPCs seeded with each treasure sighting
+
+// ---- Relationships ----
+export const AFFINITY_SAME_ROLE = 15;
+export const AFFINITY_MONK_BONUS = 20; // everyone likes monks
+export const AFFINITY_BANDIT_PENALTY = -60; // nobody likes bandits
+export const AFFINITY_NOISE = 10; // seeded per-pair variation
 
 // ---- Social system ----
 export const FOLLOWERS_TO_WIN = 20;

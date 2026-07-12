@@ -1,4 +1,5 @@
 import {
+  GOSSIP_CHANCE,
   NPC_FIGHT_CHANCE,
   NPC_FLEE_HEALTH,
   NPC_TRAVEL_SPEED,
@@ -7,7 +8,7 @@ import {
   PALACE_ZY,
   RIVAL_MAX_FOLLOWERS,
   RIVAL_RECRUIT_SECONDS,
-  RUMOR_SECONDS,
+  RIVAL_TICKER_MILESTONE,
   SIM_TICK_SECONDS,
   WANDER_RADIUS,
   WORLD_H,
@@ -16,6 +17,7 @@ import {
 import type { Npc } from "../core/types";
 import { pick } from "../core/rng";
 import { resolveOffscreenFight } from "./combat";
+import { gossip } from "./memory";
 import { advancePlan, planRoute } from "./pathing";
 import type { Game } from "./game";
 
@@ -25,13 +27,12 @@ import type { Game } from "./game";
 export class Simulation {
   private tickTimer = 0;
   private rivalTimer = 0;
-  private rumorTimer = 0;
+  private rivalRecruitCount = 0;
 
   update(game: Game, dt: number): void {
     if (game.phase === "won" || game.phase === "lost") return;
     this.tickTimer += dt;
     this.rivalTimer += dt;
-    this.rumorTimer += dt;
     while (this.tickTimer >= SIM_TICK_SECONDS) {
       this.tickTimer -= SIM_TICK_SECONDS;
       this.tick(game);
@@ -39,11 +40,6 @@ export class Simulation {
     if (this.rivalTimer >= RIVAL_RECRUIT_SECONDS) {
       this.rivalTimer = 0;
       this.rivalRecruit(game);
-    }
-    if (game.phase === "quest" && this.rumorTimer >= RUMOR_SECONDS) {
-      this.rumorTimer = 0;
-      const hint = game.sacredHint();
-      if (hint) game.ticker(hint, "rumor");
     }
   }
 
@@ -75,6 +71,30 @@ export class Simulation {
       }
     }
     this.maybeFight(game);
+    this.maybeGossip(game);
+  }
+
+  // Until proper chats arrive (WP3), NPCs sharing a district swap news
+  // opportunistically — this is how treasure sightings travel the map.
+  private maybeGossip(game: Game): void {
+    if (game.rng() >= GOSSIP_CHANCE) return;
+    const byZone = new Map<string, Npc[]>();
+    for (const npc of game.npcs) {
+      if (!npc.alive) continue;
+      const key = `${npc.zx},${npc.zy}`;
+      const arr = byZone.get(key) ?? [];
+      arr.push(npc);
+      byZone.set(key, arr);
+    }
+    const crowded = [...byZone.values()].filter((arr) => arr.length >= 2);
+    if (crowded.length === 0) return;
+    const zone = pick(game.rng, crowded);
+    const a = pick(game.rng, zone);
+    const b = pick(
+      game.rng,
+      zone.filter((n) => n !== a),
+    );
+    gossip(a, b);
   }
 
   // Pick a destination district a short walk away and start walking there.
@@ -126,14 +146,20 @@ export class Simulation {
       zone.filter((n) => n !== aggressor && !(n.hostile || n.allegiance === "rival")),
     );
     const result = resolveOffscreenFight(aggressor, victim, game.rng);
+    // Bystanders remember what they saw; the player only hears about deaths.
+    game.witness(
+      result.loserDied ? "death" : "fight",
+      aggressor.id,
+      victim.id,
+      aggressor.zx,
+      aggressor.zy,
+    );
     if (result.loserDied) {
       game.ticker(`${result.winner.name} has slain ${result.loser.name}!`, "bad");
       game.bus.emit("npcDied", { id: result.loser.id });
       if (result.loser.allegiance === "player") {
         game.bus.emit("followerChange", { count: game.followerCount });
       }
-    } else {
-      game.ticker(`${aggressor.name} attacks ${victim.name} in ${game.world.district(aggressor.zx, aggressor.zy).name}.`, "info");
     }
   }
 
@@ -148,6 +174,13 @@ export class Simulation {
     const target = pick(game.rng, candidates);
     target.allegiance = "rival";
     game.bus.emit("npcAllegiance", { id: target.id });
-    game.ticker(`Lord Ishido has recruited ${target.name} to his banner.`, "bad");
+    game.witness("recruit", ishido.id, target.id, target.zx, target.zy);
+    this.rivalRecruitCount++;
+    if (this.rivalRecruitCount % RIVAL_TICKER_MILESTONE === 1) {
+      game.ticker(
+        `Word spreads: Lord Ishido's banner grows — ${game.rivalFollowerCount()} now follow him.`,
+        "bad",
+      );
+    }
   }
 }

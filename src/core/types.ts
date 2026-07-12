@@ -42,6 +42,21 @@ export interface TravelPlan {
   ticksLeft: number; // sim-tick budget; abandoned when exhausted (stuck)
 }
 
+// The player is not an NPC; memories about the player use this id.
+export const PLAYER_ID = -2;
+
+export type MemoryKind = "fight" | "death" | "recruit" | "treasure";
+
+export interface Memory {
+  day: number; // in-game day it was witnessed
+  kind: MemoryKind;
+  subjectId: number; // who did it (npc id or PLAYER_ID)
+  objectId: number; // to whom (npc id, or sacredIndex for treasure sightings)
+  zx: number;
+  zy: number;
+  secondhand: boolean; // learned via gossip rather than witnessed
+}
+
 export interface Npc {
   id: number;
   name: string;
@@ -64,6 +79,7 @@ export interface Npc {
   isRivalLeader: boolean;
   carrying: number | null; // item id the NPC picked up
   plan: TravelPlan | null; // active walking route; NPCs never teleport
+  memories: Memory[]; // what this NPC witnessed or heard, freshest last
 }
 
 export type ItemKind = "koban" | "gift" | "weapon" | "sacred";

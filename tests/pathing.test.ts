@@ -35,6 +35,7 @@ function walker(zx: number, zy: number, lx = 20, ly = 20): Npc {
     isRivalLeader: false,
     carrying: null,
     plan: null,
+    memories: [],
   };
 }
 

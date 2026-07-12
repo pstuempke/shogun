@@ -362,6 +362,7 @@ class App {
     }
     if (npc) {
       actions.push({ key: "E", label: `Examine`, onUse: () => this.hud.toast(this.game.examine(npc), 5) });
+      actions.push({ key: "N", label: "Ask for news", onUse: () => this.hud.toast(this.game.askNews(npc), 7) });
       if (npc.allegiance === "player") {
         actions.push({ key: "O", label: `Order ${shortName(npc)}`, onUse: () => this.openOrders(npc) });
       } else {

@@ -58,8 +58,18 @@ its four notorious flaws:
 - **Lord Ishido** is the rival leader: every `RIVAL_RECRUIT_SECONDS` he
   recruits an unaffiliated NPC to his banner (cap: `RIVAL_MAX_FOLLOWERS`).
   Rival-aligned NPCs take a persuasion penalty to poach back.
-- Every noteworthy state change is pushed to the **ticker feed** (bottom
-  left): high-rank travel, attacks, deaths, recruitments, rumors.
+- **Relationships**: every NPC pair has a symmetric affinity (−100…100),
+  seeded by role (bandits despised, monks liked, same-role kinship, plus
+  seeded noise) and shifted by events.
+- **Memory**: each NPC keeps up to `MEMORY_CAPACITY` memories of events
+  witnessed in their district (fights, deaths, recruitments, treasure
+  sightings — treasure memories are never evicted first). NPCs sharing a
+  district **gossip** each tick with `GOSSIP_CHANCE`, passing fresh news
+  marked as secondhand.
+- **The ticker is curated**: player-facing events (recruits, deaths,
+  ransom), rival milestones (every `RIVAL_TICKER_MILESTONE`th Ishido
+  recruit), and quest beats. Routine travel and off-screen scuffles are
+  *not* reported — ask NPCs for news instead (`N`).
 
 ## 4. Player Classes (Difficulty Slider)
 
@@ -81,6 +91,10 @@ Context-sensitive action bar (replaces the original 9-icon bar). Actions
 appear when adjacent to an NPC / item / the Emperor, hotkeys always work:
 
 - **E — Examine**: identity, allegiance, live persuasion odds.
+- **N — Ask for news**: the NPC narrates their freshest memories
+  ("I saw…", "I heard that…", with relative days). Refused below
+  `NEWS_MIN_DISPOSITION`. Hearing a treasure memory marks that treasure
+  on the minimap.
 - **F — Befriend**: persuasion roll. Chance = base persuasion
   + followers × momentum + disposition bonus − rank-gap penalty
   (− rival penalty), clamped to 2–95 %. Failure lowers disposition.
@@ -127,10 +141,12 @@ Real-time in the world (no separate arena):
    Without 20 followers the guards turn you away.
 2. **The Shogun's Quest** — the Emperor scatters the four Imperial
    Treasures (Kusanagi sword, Yata mirror, Yasakani jewel, war fan) into
-   four distinct districts ≥ 4 Manhattan-steps from the palace. Rumor
-   ticker lines and minimap markers hint at locations. All four must be
-   carried **simultaneously** back to the Emperor.
-   During phase 2, Ishido's faction turns openly hostile.
+   four distinct districts ≥ 4 Manhattan-steps from the palace. The
+   `TREASURE_WITNESSES` NPCs nearest each treasure witness its arrival;
+   the news spreads by gossip, and the player finds treasures by asking
+   NPCs for news — a treasure appears on the minimap only once heard
+   about. All four must be carried **simultaneously** back to the
+   Emperor. During phase 2, Ishido's faction turns openly hostile.
 
 **Victory score** = (followers × 100 + gold + treasures × 250 + time
 bonus) × class multiplier.
@@ -156,7 +172,9 @@ bonus) × class multiplier.
 | Two-phase quest + scoring | [x] |
 | Isometric renderer, procedural assets, HUD, minimap | [x] |
 | Title / pause / end screens | [x] |
-| Unit tests (36) | [x] |
+| Walking NPC travel + in-game clock (WP1) | [x] |
+| Relationships, memory, gossip, ask-for-news (WP2) | [x] |
+| Unit tests (58) | [x] |
 
 Planned next iteration (NPC AI 2.0 — walking travel, utility-AI
 behaviors, NPC↔NPC social life, memory/news, follower combat, recovery
